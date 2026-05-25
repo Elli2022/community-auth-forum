@@ -11,7 +11,12 @@
   timeout = 26
 
 [[redirects]]
-  from = "/*"
+  from = "/api/*"
+  to = "/.netlify/functions/api"
+  status = 200
+
+[[redirects]]
+  from = "/health"
   to = "/.netlify/functions/api"
   status = 200
 

@@ -76,10 +76,16 @@ Requires **Node.js 22+**.
    npm test
    ```
 
-5. **Access the API**:
+5. **Web UI** (lokalt med `npm run dev`):
+   - Öppna `http://127.0.0.1:3000/` i webbläsaren
+   - Registrera användare, se lista, validering och API-status
+
+6. **Access the API**:
    - Health: `http://127.0.0.1:3000/health`
    - Base URL: `http://127.0.0.1:3000/api/v1/`
    - Use appropriate HTTP methods (GET, POST) to interact with the endpoints.
+
+**Live:** [nodejs-3rd-challenge-api.netlify.app](https://nodejs-3rd-challenge-api.netlify.app)
 
 ### Security
 
