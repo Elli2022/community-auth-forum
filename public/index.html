@@ -3,29 +3,153 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Authentication MS</title>
-    <style>
-      body {
-        font-family: system-ui, sans-serif;
-        max-width: 40rem;
-        margin: 3rem auto;
-        padding: 0 1rem;
-        line-height: 1.5;
-      }
-      code {
-        background: #f4f4f5;
-        padding: 0.1rem 0.35rem;
-        border-radius: 4px;
-      }
-    </style>
+    <meta
+      name="description"
+      content="Hantera användare – registrera, lista och validera via Authentication microservice."
+    />
+    <title>Användarhantering | Authentication MS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <h1>Authentication microservice</h1>
-    <p>API körs som Netlify Function. Endpoints:</p>
-    <ul>
-      <li><code>GET /health</code></li>
-      <li><code>GET /api/v1/</code></li>
-      <li><code>POST /api/v1/</code></li>
-    </ul>
+    <div class="bg-pattern" aria-hidden="true"></div>
+
+    <header class="site-header">
+      <div class="brand">
+        <span class="brand-icon" aria-hidden="true">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M12 2C9.24 2 7 4.24 7 7v2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-2V7c0-2.76-2.24-5-5-5Zm0 2a3 3 0 0 1 3 3v2H9V7a3 3 0 0 1 3-3Z"
+              fill="currentColor"
+            />
+          </svg>
+        </span>
+        <div>
+          <h1>Användarhantering</h1>
+          <p class="brand-sub">NodeJS 3rd Challenge · Authentication microservice</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <span id="health-badge" class="health-badge" role="status">Kontrollerar…</span>
+        <button type="button" id="btn-refresh" class="btn btn-ghost">
+          Uppdatera lista
+        </button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="card card-form" aria-labelledby="form-title">
+        <div class="card-head">
+          <h2 id="form-title">Registrera användare</h2>
+          <p class="card-desc">
+            Skapa ett konto med validering och säker lagring (bcrypt + HTML-sanering).
+          </p>
+        </div>
+
+        <form id="register-form" novalidate>
+          <div class="field-row">
+            <div class="field">
+              <label for="username">Användarnamn <span class="req">*</span></label>
+              <input
+                id="username"
+                name="username"
+                type="text"
+                autocomplete="username"
+                placeholder="t.ex. ellie01"
+                required
+              />
+              <span class="hint">5–24 tecken, små bokstäver och siffror, börjar med bokstav</span>
+              <span class="field-error" data-for="username"></span>
+            </div>
+            <div class="field">
+              <label for="password">Lösenord <span class="req">*</span></label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autocomplete="new-password"
+                placeholder="••••••••"
+                required
+              />
+              <span class="field-error" data-for="password"></span>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="email">E-post</label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              autocomplete="email"
+              placeholder="namn@exempel.se"
+            />
+            <span class="hint">Valfritt – om du fyller i krävs giltig adress</span>
+            <span class="field-error" data-for="email"></span>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label for="name">Förnamn</label>
+              <input id="name" name="name" type="text" autocomplete="given-name" />
+              <span class="field-error" data-for="name"></span>
+            </div>
+            <div class="field">
+              <label for="surname">Efternamn</label>
+              <input id="surname" name="surname" type="text" autocomplete="family-name" />
+              <span class="field-error" data-for="surname"></span>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary" id="btn-submit">
+              <span class="btn-label">Skapa användare</span>
+              <span class="btn-spinner" hidden aria-hidden="true"></span>
+            </button>
+            <button type="reset" class="btn btn-ghost">Rensa formulär</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="card card-list" aria-labelledby="list-title">
+        <div class="card-head">
+          <h2 id="list-title">Registrerade användare</h2>
+          <p class="card-desc">
+            <span id="user-count">0</span> användare · lösenord visas aldrig i listan
+          </p>
+        </div>
+
+        <div id="list-loading" class="list-state" hidden>
+          <div class="spinner" aria-hidden="true"></div>
+          <p>Hämtar användare…</p>
+        </div>
+
+        <div id="list-empty" class="list-state">
+          <div class="empty-icon" aria-hidden="true">👤</div>
+          <p>Inga användare ännu</p>
+          <p class="muted">Registrera den första med formuläret till vänster.</p>
+        </div>
+
+        <ul id="user-list" class="user-list" hidden></ul>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>
+        API:
+        <code>GET/POST /api/v1/</code>
+        ·
+        <a href="/health" target="_blank" rel="noopener">/health</a>
+      </p>
+    </footer>
+
+    <div id="toast-root" class="toast-root" aria-live="polite" aria-atomic="true"></div>
+
+    <script src="/app.js" type="module"></script>
   </body>
 </html>
