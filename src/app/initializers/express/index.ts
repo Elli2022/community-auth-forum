@@ -1,30 +1,21 @@
-import express from "express";
-import bodyParser from "body-parser";
-import compression from "compression";
-import cors from "cors";
-import helmet from "helmet";
-import createServer from "./libs/express";
-import { routes } from "../../component/controller";
+import config from "../../../config";
 import { logger } from "../../libs/logger";
+import { createApp } from "../../create-app";
 
-const app = express();
+const server = ({
+  hostname,
+  port,
+}: {
+  hostname?: string;
+  port?: number;
+} = {}) => {
+  const app = createApp();
+  const listenHost = hostname ?? config.NODE_HOSTNAME;
+  const listenPort = port ?? config.NODE_PORT;
 
-const server = ({ hostname, port }) => {
-  createServer({
-    json: express.json,
-    urlencoded: express.urlencoded,
-    app,
-    handler: { routes: [] }, // Tillfällig lösning tills du har en faktisk handler.
-    cors,
-    compression,
-    helmet,
-    logger,
-  }).server({ hostname, port });
-
-  // Lägg till dina rutter här istället för i createServer
-  routes.forEach((route) => {
-    app[route.method](route.path, route.component);
+  app.listen(listenPort, listenHost, () => {
+    logger.info(`[EXPRESS] Server running at http://${listenHost}:${listenPort}`);
   });
 };
 
-export { server };
+export { server, createApp };

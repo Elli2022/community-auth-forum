@@ -3,7 +3,7 @@ dotenvConfig();
 
 import { expect } from "chai";
 import * as path from "path";
-import config from "../config";
+import config from "../../config";
 import { logger } from "../../app/libs/logger";
 import { rm, readFile } from "node:fs/promises";
 import { makeInputObj } from "../../app/component/entities";
@@ -57,8 +57,11 @@ describe("Post", () => {
     };
     try {
       await post({ params });
+      expect.fail("should have thrown");
     } catch (err) {
-      expect(err).to.equal(config.ERROR_MSG.post.NO_DATA);
+      expect((err as Error).message).to.equal(
+        config.ERROR_MSG.post.MISSING_PARAMETER + "username"
+      );
     }
   });
 
@@ -69,8 +72,11 @@ describe("Post", () => {
     };
     try {
       await post({ params });
+      expect.fail("should have thrown");
     } catch (err) {
-      expect(err).to.equal(config.ERROR_MSG.post.EXISTING_USER);
+      expect((err as Error).message).to.equal(
+        config.ERROR_MSG.post.EXISTING_USER
+      );
     }
   });
 
@@ -86,7 +92,7 @@ describe("Post", () => {
 
   it("should not insert a user without a valid email", async () => {
     const params = {
-      username: config.TEST_DATA.user1.username,
+      username: "user4",
       password: config.TEST_DATA.user1.password,
       email: "invalidEmail",
       name: "Test",
@@ -94,14 +100,17 @@ describe("Post", () => {
     };
     try {
       await post({ params });
+      expect.fail("should have thrown");
     } catch (err) {
-      expect(err.message).to.include(config.ERROR_MSG.post.INVALID_EMAIL);
+      expect((err as Error).message).to.include(
+        config.ERROR_MSG.post.INVALID_EMAIL
+      );
     }
   });
 
   it("should not insert a user without name or surname", async () => {
     const params = {
-      username: config.TEST_DATA.user1.username,
+      username: "user5",
       password: config.TEST_DATA.user1.password,
       email: "test@example.com",
       name: "",
@@ -109,8 +118,11 @@ describe("Post", () => {
     };
     try {
       await post({ params });
+      expect.fail("should have thrown");
     } catch (err) {
-      expect(err.message).to.include(config.ERROR_MSG.post.MISSING_PARAMETER);
+      expect((err as Error).message).to.include(
+        config.ERROR_MSG.post.MISSING_PARAMETER
+      );
     }
   });
 

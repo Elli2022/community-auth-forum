@@ -25,8 +25,8 @@ const postEP = async (req, res) => {
 };
 
 const routes = [
-  { path: `${baseUrl}/`, method: "get", component: getEP },
-  { path: `${baseUrl}/`, method: "post", component: postEP },
+  { path: `${baseUrl}/`, method: "get" as const, component: getEP },
+  { path: `${baseUrl}/`, method: "post" as const, component: postEP },
 ];
 
 export { routes };
