@@ -33,6 +33,7 @@ export default function makeUsersRepository({
   return Object.freeze({
     findAll,
     findByUsername,
+    findByEmail,
     create,
     truncateAll,
   });
@@ -53,6 +54,16 @@ export default function makeUsersRepository({
       SELECT id, username, password_hash, email, name, surname, created_at, modified_at
       FROM users
       WHERE username = ${username}
+      LIMIT 1
+    `;
+    return (rows[0] as UserRecord | undefined) ?? null;
+  }
+
+  async function findByEmail(email: string): Promise<UserRecord | null> {
+    const rows = await sql`
+      SELECT id, username, password_hash, email, name, surname, created_at, modified_at
+      FROM users
+      WHERE LOWER(email) = LOWER(${email})
       LIMIT 1
     `;
     return (rows[0] as UserRecord | undefined) ?? null;

@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import { logger } from "../../libs/logger";
-import { post, get } from "../use-cases";
+import { post, get, getWall, postWall } from "../use-cases";
 
 const baseUrl = "/api/v1";
 
@@ -47,9 +47,31 @@ const postEP = async (req: Request, res: Response) => {
   }
 };
 
+const getWallEP = async (_req: Request, res: Response) => {
+  try {
+    const results = await getWall();
+    res.json({ err: 0, data: results });
+  } catch (err) {
+    logger.info(`[EP][WALL][GET] ${errorMessage(err)}`);
+    res.status(400).json({ err: 1, message: errorMessage(err) });
+  }
+};
+
+const postWallEP = async (req: Request, res: Response) => {
+  try {
+    const results = await postWall({ params: req.body });
+    res.status(201).json({ err: 0, data: results });
+  } catch (err) {
+    logger.info(`[EP][WALL][POST] ${errorMessage(err)}`);
+    res.status(400).json({ err: 1, message: errorMessage(err) });
+  }
+};
+
 const routes = [
   { path: `${baseUrl}/`, method: "get" as const, component: getEP },
   { path: `${baseUrl}/`, method: "post" as const, component: postEP },
+  { path: `${baseUrl}/wall`, method: "get" as const, component: getWallEP },
+  { path: `${baseUrl}/wall`, method: "post" as const, component: postWallEP },
 ];
 
 export { routes };

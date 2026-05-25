@@ -10,6 +10,13 @@ const userCount = $("#user-count");
 const healthBadge = $("#health-badge");
 const toastRoot = $("#toast-root");
 
+const wallForm = $("#wall-form");
+const wallList = $("#wall-list");
+const wallEmpty = $("#wall-empty");
+const wallLoading = $("#wall-loading");
+const wallChars = $("#wall-chars");
+const wallMessage = $("#wall-message");
+
 function showToast(message, type = "success") {
   const el = document.createElement("div");
   el.className = `toast ${type}`;
@@ -132,6 +139,24 @@ function formatDate(value) {
   return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleString("sv-SE");
 }
 
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function updateListView(mode) {
+  listLoading.hidden = mode !== "loading";
+  listEmpty.hidden = mode !== "empty";
+  userList.hidden = mode !== "users";
+}
+
+function updateWallView(mode) {
+  wallLoading.hidden = mode !== "loading";
+  wallEmpty.hidden = mode !== "empty";
+  wallList.hidden = mode !== "posts";
+}
+
 function renderUser(user) {
   const li = document.createElement("li");
   const initial = (user.name?.[0] || user.username?.[0] || "?").toUpperCase();
@@ -155,22 +180,20 @@ function renderUser(user) {
   return li;
 }
 
-function escapeHtml(str) {
-  const div = document.createElement("div");
-  div.textContent = str;
-  return div.innerHTML;
-}
-
-function setListLoading(loading) {
-  listLoading.hidden = !loading;
-  if (loading) {
-    userList.hidden = true;
-    listEmpty.hidden = true;
-  }
+function renderWallPost(post) {
+  const li = document.createElement("li");
+  li.innerHTML = `
+    <div class="wall-meta">
+      <strong>@${escapeHtml(post.username)}</strong>
+      <time>${escapeHtml(post.created)}</time>
+    </div>
+    <p class="wall-text">${escapeHtml(post.message)}</p>
+  `;
+  return li;
 }
 
 async function loadUsers() {
-  setListLoading(true);
+  updateListView("loading");
   try {
     const { data } = await api("/api/v1/");
     const users = Array.isArray(data) ? data : [];
@@ -179,19 +202,34 @@ async function loadUsers() {
     userCount.textContent = String(users.length);
 
     if (users.length === 0) {
-      listEmpty.hidden = false;
-      userList.hidden = true;
+      updateListView("empty");
     } else {
-      listEmpty.hidden = true;
-      userList.hidden = false;
       users.forEach((u) => userList.appendChild(renderUser(u)));
+      updateListView("users");
     }
   } catch (err) {
     showToast(err.message || "Kunde inte hämta användare", "error");
-    listEmpty.hidden = false;
-    userList.hidden = true;
-  } finally {
-    setListLoading(false);
+    updateListView("empty");
+  }
+}
+
+async function loadWall() {
+  updateWallView("loading");
+  try {
+    const { data } = await api("/api/v1/wall");
+    const posts = Array.isArray(data) ? data : [];
+
+    wallList.innerHTML = "";
+
+    if (posts.length === 0) {
+      updateWallView("empty");
+    } else {
+      posts.forEach((p) => wallList.appendChild(renderWallPost(p)));
+      updateWallView("posts");
+    }
+  } catch (err) {
+    showToast(err.message || "Kunde inte hämta väggen", "error");
+    updateWallView("empty");
   }
 }
 
@@ -236,7 +274,14 @@ form.addEventListener("submit", async (e) => {
     clearFieldErrors();
     await loadUsers();
   } catch (err) {
-    showToast(err.message || "Registrering misslyckades", "error");
+    const msg = err.message || "Registrering misslyckades";
+    if (msg.includes("email already registered")) {
+      showToast("E-postadressen är redan registrerad.", "error");
+    } else if (msg.includes("user already exists")) {
+      showToast("Användarnamnet finns redan.", "error");
+    } else {
+      showToast(msg, "error");
+    }
   } finally {
     btn.disabled = false;
     label.hidden = false;
@@ -246,10 +291,46 @@ form.addEventListener("submit", async (e) => {
 
 form.addEventListener("reset", () => clearFieldErrors());
 
+wallForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const formData = new FormData(wallForm);
+  const username = formData.get("username")?.trim();
+  const message = formData.get("message")?.trim();
+
+  if (!username || !message) {
+    showToast("Användarnamn och meddelande krävs.", "error");
+    return;
+  }
+
+  try {
+    await api("/api/v1/wall", {
+      method: "POST",
+      body: JSON.stringify({ username, message }),
+    });
+    showToast("Inlägg publicerat!");
+    wallForm.reset();
+    wallChars.textContent = "0";
+    await loadWall();
+  } catch (err) {
+    const msg = err.message || "Kunde inte publicera";
+    if (msg.includes("must be registered")) {
+      showToast("Du måste registrera användarnamnet först.", "error");
+    } else {
+      showToast(msg, "error");
+    }
+  }
+});
+
+wallMessage?.addEventListener("input", () => {
+  wallChars.textContent = String(wallMessage.value.length);
+});
+
 $("#btn-refresh").addEventListener("click", () => {
   loadUsers();
+  loadWall();
   checkHealth();
 });
 
 checkHealth();
 loadUsers();
+loadWall();

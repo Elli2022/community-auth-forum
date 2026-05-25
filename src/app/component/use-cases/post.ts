@@ -64,9 +64,16 @@ export default function createPost({
       if (params.name !== undefined) userInput.name = userFactory.name();
       if (params.surname !== undefined) userInput.surname = userFactory.surname();
 
-      const existing = await usersRepository.findByUsername(userInput.username);
-      if (existing) {
+      const existingUser = await usersRepository.findByUsername(userInput.username);
+      if (existingUser) {
         throw new Error(errorMsgs.EXISTING_USER);
+      }
+
+      if (userInput.email) {
+        const existingEmail = await usersRepository.findByEmail(userInput.email);
+        if (existingEmail) {
+          throw new Error(errorMsgs.EXISTING_EMAIL);
+        }
       }
 
       const row = await usersRepository.create(userInput);

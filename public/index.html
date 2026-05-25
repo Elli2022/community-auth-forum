@@ -42,7 +42,7 @@
       </div>
     </header>
 
-    <main class="layout">
+    <main class="layout layout-with-wall">
       <section class="card card-form" aria-labelledby="form-title">
         <div class="card-head">
           <h2 id="form-title">Registrera användare</h2>
@@ -89,7 +89,7 @@
               autocomplete="email"
               placeholder="namn@exempel.se"
             />
-            <span class="hint">Valfritt – om du fyller i krävs giltig adress</span>
+            <span class="hint">Valfritt – måste vara unik om den anges</span>
             <span class="field-error" data-for="email"></span>
           </div>
 
@@ -124,18 +124,70 @@
           </p>
         </div>
 
-        <div id="list-loading" class="list-state" hidden>
+        <div class="list-body">
+          <div id="list-loading" class="list-state">
+            <div class="spinner" aria-hidden="true"></div>
+            <p>Hämtar användare…</p>
+          </div>
+
+          <div id="list-empty" class="list-state" hidden>
+            <div class="empty-icon" aria-hidden="true">👤</div>
+            <p>Inga användare ännu</p>
+            <p class="muted">Registrera den första med formuläret till vänster.</p>
+          </div>
+
+          <ul id="user-list" class="user-list" hidden></ul>
+        </div>
+      </section>
+
+      <section class="card card-wall" aria-labelledby="wall-title">
+        <div class="card-head">
+          <h2 id="wall-title">Meddelandevägg</h2>
+          <p class="card-desc">
+            Skriv ett inlägg som registrerad användare. Max 500 tecken.
+          </p>
+        </div>
+
+        <form id="wall-form" class="wall-form" novalidate>
+          <div class="field-row">
+            <div class="field">
+              <label for="wall-username">Användarnamn <span class="req">*</span></label>
+              <input
+                id="wall-username"
+                name="username"
+                type="text"
+                placeholder="ditt registrerade namn"
+                required
+              />
+            </div>
+            <div class="field wall-message-field">
+              <label for="wall-message">Meddelande <span class="req">*</span></label>
+              <textarea
+                id="wall-message"
+                name="message"
+                rows="3"
+                maxlength="500"
+                placeholder="Vad vill du dela?"
+                required
+              ></textarea>
+              <span class="hint"><span id="wall-chars">0</span>/500 tecken</span>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Publicera på väggen</button>
+          </div>
+        </form>
+
+        <div id="wall-loading" class="list-state wall-list-state" hidden>
           <div class="spinner" aria-hidden="true"></div>
-          <p>Hämtar användare…</p>
+          <p>Hämtar inlägg…</p>
         </div>
 
-        <div id="list-empty" class="list-state">
-          <div class="empty-icon" aria-hidden="true">👤</div>
-          <p>Inga användare ännu</p>
-          <p class="muted">Registrera den första med formuläret till vänster.</p>
+        <div id="wall-empty" class="list-state wall-list-state" hidden>
+          <p>Inga inlägg ännu — bli först att skriva!</p>
         </div>
 
-        <ul id="user-list" class="user-list" hidden></ul>
+        <ul id="wall-list" class="wall-list" hidden></ul>
       </section>
     </main>
 

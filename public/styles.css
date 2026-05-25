@@ -142,12 +142,36 @@ body {
   gap: 1.5rem;
   max-width: 1100px;
   margin: 0 auto;
-  padding: 0 1.5rem 3rem;
+  padding: 0 1.5rem 1.5rem;
+}
+
+.layout-with-wall {
+  grid-template-columns: 1fr 1fr;
+  grid-template-areas:
+    "register users"
+    "wall wall";
+}
+
+.layout-with-wall .card-form {
+  grid-area: register;
+}
+
+.layout-with-wall .card-list {
+  grid-area: users;
+}
+
+.layout-with-wall .card-wall {
+  grid-area: wall;
 }
 
 @media (max-width: 860px) {
-  .layout {
+  .layout,
+  .layout-with-wall {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      "register"
+      "users"
+      "wall";
   }
 }
 
@@ -322,6 +346,11 @@ body {
   padding-bottom: 0.5rem;
 }
 
+.list-state[hidden],
+.user-list[hidden] {
+  display: none !important;
+}
+
 .list-state {
   flex: 1;
   display: flex;
@@ -331,6 +360,16 @@ body {
   padding: 2rem;
   text-align: center;
   color: var(--text-muted);
+}
+
+.list-body {
+  flex: 1;
+  min-height: 200px;
+  position: relative;
+}
+
+.user-list:not([hidden]) {
+  display: block;
 }
 
 .list-state p {
@@ -486,6 +525,84 @@ body {
 
 .toast.error {
   border-color: rgba(248, 113, 113, 0.4);
+}
+
+.card-wall {
+  margin-top: 0;
+}
+
+.wall-form {
+  padding: 0 1.5rem 1rem;
+}
+
+.wall-message-field {
+  flex: 2;
+}
+
+.wall-form textarea {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  font: inherit;
+  color: var(--text);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  resize: vertical;
+  min-height: 4.5rem;
+}
+
+.wall-form textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.wall-list-state {
+  padding: 1.5rem;
+  min-height: auto;
+}
+
+.wall-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 1rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.wall-list[hidden] {
+  display: none !important;
+}
+
+.wall-list li {
+  padding: 1rem 1.1rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  animation: fadeIn 0.3s ease;
+}
+
+.wall-list .wall-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.wall-list .wall-meta strong {
+  color: var(--accent);
+  font-family: var(--mono);
+  font-weight: 600;
+}
+
+.wall-list .wall-text {
+  margin: 0;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 @keyframes slideIn {
