@@ -1,27 +1,13 @@
-const API_BASE = "";
-const AVATAR_COUNT = 5;
+const API = "";
 const SESSION_KEY = "caf_session";
+const AVATARS = 5;
 
-const $ = (sel, root = document) => root.querySelector(sel);
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 
-const form = $("#register-form");
-const userList = $("#user-list");
-const listEmpty = $("#list-empty");
-const listLoading = $("#list-loading");
-const userCount = $("#user-count");
-const healthBadge = $("#health-badge");
-const toastRoot = $("#toast-root");
-const wallForm = $("#wall-form");
-const wallList = $("#wall-list");
-const wallEmpty = $("#wall-empty");
-const wallLoading = $("#wall-loading");
-const wallChars = $("#wall-chars");
-const wallMessage = $("#wall-message");
-const loginForm = $("#login-form");
-const sessionBar = $("#session-bar");
-const sessionProfileLink = $("#session-profile-link");
-const viewHome = $("#view-home");
-const viewProfile = $("#view-profile");
+let registerAvatarData = null;
+let registerAvatarId = 1;
+let composerImageData = null;
 
 function getSession() {
   try {
@@ -32,487 +18,617 @@ function getSession() {
   }
 }
 
-function setSession({ token, user }) {
-  localStorage.setItem(SESSION_KEY, JSON.stringify({ token, user }));
-  updateSessionUI();
+function setSession(data) {
+  localStorage.setItem(SESSION_KEY, JSON.stringify(data));
+  syncNav();
 }
 
 function clearSession() {
   localStorage.removeItem(SESSION_KEY);
-  updateSessionUI();
+  syncNav();
 }
 
 function authHeaders() {
-  const session = getSession();
-  if (!session?.token) return {};
-  return { Authorization: `Bearer ${session.token}` };
+  const t = getSession()?.token;
+  return t ? { Authorization: `Bearer ${t}` } : {};
 }
 
-function avatarUrl(id) {
-  const n = Math.min(AVATAR_COUNT, Math.max(1, Number(id) || 1));
-  return `/avatars/${n}.svg`;
+function presetAvatar(id) {
+  return `/avatars/${Math.min(AVATARS, Math.max(1, Number(id) || 1))}.svg`;
 }
 
-function showToast(message, type = "success") {
+function avatarSrc(user) {
+  if (!user) return presetAvatar(1);
+  return user.avatar_url || (user.has_custom_avatar ? `/api/v1/users/${encodeURIComponent(user.username)}/avatar` : presetAvatar(user.avatar_id));
+}
+
+function displayName(u) {
+  if (!u) return "";
+  if (u.display_name) return u.display_name;
+  if (u.name && u.surname) return `${u.name} ${u.surname}`;
+  if (u.name) return u.name;
+  return u.username;
+}
+
+function toast(msg, type = "ok") {
   const el = document.createElement("div");
-  el.className = `toast ${type}`;
-  el.textContent = message;
-  toastRoot.appendChild(el);
-  setTimeout(() => {
-    el.style.opacity = "0";
-    el.style.transition = "opacity 0.25s";
-    setTimeout(() => el.remove(), 250);
-  }, 4500);
+  el.className = `toast${type === "error" ? " error" : ""}`;
+  el.textContent = msg;
+  $("#toast-root").appendChild(el);
+  setTimeout(() => el.remove(), 4200);
 }
 
-function escapeHtml(str) {
-  const div = document.createElement("div");
-  div.textContent = str;
-  return div.innerHTML;
+function escapeHtml(s) {
+  const d = document.createElement("div");
+  d.textContent = s;
+  return d.innerHTML;
 }
 
-function displayName(user) {
-  if (user.name && user.surname) return `${user.name} ${user.surname}`;
-  if (user.name) return user.name;
-  return user.username;
-}
-
-function buildAvatarPicker(container, selectedId, onSelect) {
-  container.innerHTML = "";
-  for (let i = 1; i <= AVATAR_COUNT; i++) {
-    const label = document.createElement("label");
-    label.className = "avatar-option";
-    const input = document.createElement("input");
-    input.type = "radio";
-    input.name = "avatar_pick";
-    input.value = String(i);
-    input.checked = i === selectedId;
-    const img = document.createElement("img");
-    img.src = avatarUrl(i);
-    img.alt = `Avatar ${i}`;
-    img.width = 48;
-    img.height = 48;
-    label.append(input, img);
-    input.addEventListener("change", () => onSelect(i));
-    container.appendChild(label);
-  }
-}
-
-function updateSessionUI() {
-  const session = getSession();
-  if (session?.user?.username) {
-    sessionBar.hidden = false;
-    loginForm.hidden = true;
-    sessionProfileLink.href = `#/profile/${session.user.username}`;
-    sessionProfileLink.innerHTML = `<img src="${avatarUrl(session.user.avatar_id)}" alt="" width="28" height="28" class="avatar-inline" /> @${escapeHtml(session.user.username)}`;
-  } else {
-    sessionBar.hidden = true;
-    loginForm.hidden = false;
-  }
-}
-
-async function api(path, options = {}) {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      ...authHeaders(),
-      ...(options.headers || {}),
-    },
-    ...options,
+async function api(path, opts = {}) {
+  const res = await fetch(`${API}${path}`, {
+    headers: { "Content-Type": "application/json", Accept: "application/json", ...authHeaders(), ...opts.headers },
+    ...opts,
   });
   const body = await res.json().catch(() => ({}));
-  if (!res.ok || body.err === 1) {
-    throw new Error(body.message || `Fel ${res.status}`);
-  }
+  if (!res.ok || body.err === 1) throw new Error(body.message || `Fel ${res.status}`);
   return body;
 }
 
-function updateListView(mode) {
-  listLoading.hidden = mode !== "loading";
-  listEmpty.hidden = mode !== "empty";
-  userList.hidden = mode !== "users";
-}
-
-function updateWallView(mode) {
-  wallLoading.hidden = mode !== "loading";
-  wallEmpty.hidden = mode !== "empty";
-  wallList.hidden = mode !== "posts";
-}
-
-function renderUser(user) {
-  const li = document.createElement("li");
-  const name = displayName(user);
-  li.innerHTML = `
-    <a href="#/profile/${encodeURIComponent(user.username)}" class="user-row-link">
-      <img class="user-avatar-img" src="${avatarUrl(user.avatar_id)}" alt="" width="48" height="48" />
-      <div class="user-meta">
-        <h3>${escapeHtml(name)}</h3>
-        <span class="username">@${escapeHtml(user.username)}</span>
-        ${user.bio ? `<p class="user-bio-preview">${escapeHtml(user.bio)}</p>` : ""}
-      </div>
-    </a>
-  `;
-  return li;
-}
-
-function renderWallPost(post) {
-  const li = document.createElement("li");
-  li.innerHTML = `
-    <div class="wall-meta">
-      <a href="#/profile/${encodeURIComponent(post.username)}"><strong>@${escapeHtml(post.username)}</strong></a>
-      <time>${escapeHtml(post.created)}</time>
-    </div>
-    <p class="wall-text">${escapeHtml(post.message)}</p>
-  `;
-  return li;
-}
-
-async function loadUsers() {
-  updateListView("loading");
-  try {
-    const { data } = await api("/api/v1/");
-    const users = Array.isArray(data) ? data : [];
-    userList.innerHTML = "";
-    userCount.textContent = String(users.length);
-    if (users.length === 0) {
-      updateListView("empty");
-    } else {
-      users.forEach((u) => userList.appendChild(renderUser(u)));
-      updateListView("users");
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    if (!file || file.size > 400_000) {
+      reject(new Error("Bilden får max vara 400 KB."));
+      return;
     }
-  } catch (err) {
-    showToast(err.message || "Kunde inte hämta medlemmar", "error");
-    updateListView("empty");
-  }
-}
-
-async function loadWall() {
-  updateWallView("loading");
-  try {
-    const { data } = await api("/api/v1/wall");
-    const posts = Array.isArray(data) ? data : [];
-    wallList.innerHTML = "";
-    if (posts.length === 0) {
-      updateWallView("empty");
-    } else {
-      posts.forEach((p) => wallList.appendChild(renderWallPost(p)));
-      updateWallView("posts");
-    }
-  } catch (err) {
-    showToast(err.message || "Kunde inte hämta väggen", "error");
-    updateWallView("empty");
-  }
-}
-
-async function checkHealth() {
-  try {
-    const res = await fetch(`${API_BASE}/health`);
-    const data = await res.json();
-    if (data.status === "ok") {
-      healthBadge.textContent = "API online";
-      healthBadge.className = "health-badge ok";
-    } else throw new Error();
-  } catch {
-    healthBadge.textContent = "API offline";
-    healthBadge.className = "health-badge err";
-  }
-}
-
-function setFieldError(name, message) {
-  const input = form?.elements[name];
-  const errEl = $(`[data-for="${name}"]`);
-  if (input) input.classList.toggle("invalid", Boolean(message));
-  if (errEl) errEl.textContent = message || "";
-}
-
-function clearFieldErrors() {
-  ["username", "password", "email"].forEach((n) => setFieldError(n, ""));
-}
-
-function validateUsername(value) {
-  if (!value.trim()) return "Användarnamn krävs.";
-  if (value.length <= 4 || value.length >= 25)
-    return "Användarnamn måste vara 5–24 tecken.";
-  if (!/^[a-z][a-z0-9]+$/.test(value))
-    return "Endast små bokstäver och siffror, måste börja med bokstav.";
-  return "";
-}
-
-function validateEmail(value) {
-  if (!value.trim()) return "";
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return "Ogiltig e-postadress.";
-  return "";
-}
-
-function buildPayload(formData) {
-  const payload = {
-    username: formData.get("username")?.trim(),
-    password: formData.get("password"),
-    avatar_id: Number(formData.get("avatar_id") || 1),
-  };
-  const bio = formData.get("bio")?.trim();
-  const email = formData.get("email")?.trim();
-  const name = formData.get("name")?.trim();
-  const surname = formData.get("surname")?.trim();
-  if (bio) payload.bio = bio;
-  if (email) payload.email = email;
-  if (name) payload.name = name;
-  if (surname) payload.surname = surname;
-  return payload;
-}
-
-function validateForm(formData) {
-  clearFieldErrors();
-  let valid = true;
-  const usernameErr = validateUsername(formData.get("username") || "");
-  if (usernameErr) {
-    setFieldError("username", usernameErr);
-    valid = false;
-  }
-  if (!formData.get("password")) {
-    setFieldError("password", "Lösenord krävs.");
-    valid = false;
-  }
-  const emailErr = validateEmail(formData.get("email") || "");
-  if (emailErr) {
-    setFieldError("email", emailErr);
-    valid = false;
-  }
-  return valid;
-}
-
-async function handleLogin(e) {
-  e.preventDefault();
-  const username = $("#login-username").value.trim();
-  const password = $("#login-password").value;
-  if (!username || !password) {
-    showToast("Ange användarnamn och lösenord.", "error");
-    return;
-  }
-  try {
-    const { data } = await api("/api/v1/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ username, password }),
-    });
-    setSession(data);
-    loginForm.reset();
-    showToast(`Välkommen @${data.user.username}!`);
-    await loadWall();
-  } catch (err) {
-    showToast(err.message || "Inloggning misslyckades", "error");
-  }
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("Kunde inte läsa bilden."));
+    reader.readAsDataURL(file);
+  });
 }
 
 function parseRoute() {
-  const hash = location.hash.slice(1) || "/";
-  const match = hash.match(/^\/profile\/([^/]+)/);
-  if (match) return { view: "profile", username: decodeURIComponent(match[1]) };
+  const h = location.hash.slice(1) || "/";
+  if (h === "/register") return { view: "register" };
+  const m = h.match(/^\/profile\/([^/]+)/);
+  if (m) return { view: "profile", username: decodeURIComponent(m[1]) };
   return { view: "home" };
 }
 
 function showView(route) {
-  if (route.view === "profile") {
-    viewHome.hidden = true;
-    viewProfile.hidden = false;
+  $("#view-home").hidden = route.view !== "home";
+  $("#view-register").hidden = route.view !== "register";
+  $("#view-profile").hidden = route.view !== "profile";
+
+  if (route.view === "home") {
+    loadFeed();
+    loadSidebar();
+  } else if (route.view === "register") {
+    initRegisterAvatars();
+  } else if (route.view === "profile") {
     loadProfile(route.username);
-  } else {
-    viewHome.hidden = false;
-    viewProfile.hidden = true;
+  }
+}
+
+function syncNav() {
+  const s = getSession();
+  const logged = Boolean(s?.user);
+  $("#session-box").hidden = !logged;
+  $("#login-form").hidden = logged;
+  $("#composer").hidden = !logged;
+  $("#guest-banner").hidden = logged;
+  $("#nav-register").hidden = logged;
+
+  if (logged) {
+    const u = s.user;
+    const href = `#/profile/${encodeURIComponent(u.username)}`;
+    $("#nav-me").href = href;
+    $("#sidebar-profile").href = href;
+    $("#sidebar-profile").hidden = false;
+    $("#nav-avatar").src = avatarSrc(u);
+    $("#composer-avatar").src = avatarSrc(u);
+  }
+}
+
+async function checkHealth() {
+  const dot = $("#health-dot");
+  try {
+    const r = await fetch(`${API}/health`);
+    const d = await r.json();
+    dot.className = d.status === "ok" ? "health-dot ok" : "health-dot err";
+  } catch {
+    dot.className = "health-dot err";
+  }
+}
+
+function buildAvatarPicker(container, selected, onPick) {
+  container.innerHTML = "";
+  for (let i = 1; i <= AVATARS; i++) {
+    const label = document.createElement("label");
+    label.className = "avatar-option";
+    const input = document.createElement("input");
+    input.type = "radio";
+    input.name = "av";
+    input.value = String(i);
+    input.checked = i === selected && !registerAvatarData;
+    const img = document.createElement("img");
+    img.src = presetAvatar(i);
+    img.alt = `Avatar ${i}`;
+    label.append(input, img);
+    input.addEventListener("change", () => {
+      registerAvatarData = null;
+      onPick(i);
+    });
+    container.appendChild(label);
+  }
+}
+
+function initRegisterAvatars() {
+  buildAvatarPicker($("#register-avatars"), registerAvatarId, (id) => {
+    registerAvatarId = id;
+    $("#reg-avatar-id").value = String(id);
+    $("#register-preview").src = presetAvatar(id);
+  });
+}
+
+function renderPostCard(post) {
+  const card = document.createElement("article");
+  card.className = "post-card card";
+  card.dataset.postId = String(post.id);
+
+  const author = post.author || {};
+  const name = displayName(author);
+  const img = post.has_image ? `${API}${post.image_url}` : "";
+
+  card.innerHTML = `
+    <header class="post-header">
+      <a href="#/profile/${encodeURIComponent(post.username)}">
+        <img src="${avatarSrc(author)}" alt="" width="40" height="40" />
+      </a>
+      <div>
+        <a href="#/profile/${encodeURIComponent(post.username)}"><strong>${escapeHtml(name)}</strong></a>
+        <time>${escapeHtml(post.created)}</time>
+      </div>
+    </header>
+    ${post.message.trim() ? `<p class="post-body">${escapeHtml(post.message.trim())}</p>` : ""}
+    ${img ? `<img class="post-image" src="${img}" alt="" loading="lazy" />` : ""}
+    <div class="post-stats">
+      <span class="likes-label">${post.likes_count || 0} gilla-markeringar</span>
+      · <span>${post.comments_count || 0} kommentarer</span>
+    </div>
+    <div class="post-actions">
+      <button type="button" class="btn-like ${post.liked_by_me ? "liked" : ""}" data-id="${post.id}">👍 Gilla</button>
+      <button type="button" class="btn-comment-toggle">💬 Kommentera</button>
+    </div>
+    <div class="post-comments">${(post.comments || []).map(renderComment).join("")}</div>
+    <form class="comment-form" data-id="${post.id}" hidden>
+      <img src="${getSession() ? avatarSrc(getSession().user) : presetAvatar(1)}" alt="" width="32" height="32" />
+      <input type="text" placeholder="Skriv en kommentar…" maxlength="300" />
+      <button type="submit" class="btn btn-fb">Skicka</button>
+    </form>
+  `;
+
+  card.querySelector(".btn-like")?.addEventListener("click", () => toggleLike(post.id, card));
+  card.querySelector(".btn-comment-toggle")?.addEventListener("click", () => {
+    const f = card.querySelector(".comment-form");
+    f.hidden = !f.hidden;
+  });
+  card.querySelector(".comment-form")?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const input = e.target.querySelector("input");
+    addComment(post.id, input.value.trim(), card);
+    input.value = "";
+  });
+
+  return card;
+}
+
+function renderComment(c) {
+  const a = c.author || {};
+  return `
+    <div class="comment">
+      <img src="${avatarSrc(a)}" alt="" />
+      <div class="comment-bubble">
+        <strong>${escapeHtml(a.display_name || c.username)}</strong>
+        ${escapeHtml(c.message)}
+      </div>
+    </div>
+  `;
+}
+
+async function loadFeed() {
+  const box = $("#feed-posts");
+  const loading = $("#feed-loading");
+  const empty = $("#feed-empty");
+  loading.hidden = false;
+  empty.hidden = true;
+  box.innerHTML = "";
+
+  try {
+    const { data } = await api("/api/v1/feed");
+    loading.hidden = true;
+    if (!data?.length) {
+      empty.hidden = false;
+      return;
+    }
+    data.forEach((p) => box.appendChild(renderPostCard(p)));
+  } catch (e) {
+    loading.hidden = true;
+    toast(e.message, "error");
+  }
+}
+
+async function toggleLike(postId, card) {
+  if (!getSession()) {
+    toast("Logga in för att gilla.", "error");
+    return;
+  }
+  try {
+    const { data } = await api(`/api/v1/posts/${postId}/like`, { method: "POST" });
+    const btn = card.querySelector(".btn-like");
+    btn.classList.toggle("liked", data.liked);
+    card.querySelector(".likes-label").textContent = `${data.likes_count} gilla-markeringar`;
+  } catch (e) {
+    toast(e.message, "error");
+  }
+}
+
+async function addComment(postId, message, card) {
+  if (!getSession()) return toast("Logga in.", "error");
+  if (!message) return;
+  try {
+    const { data } = await api(`/api/v1/posts/${postId}/comments`, {
+      method: "POST",
+      body: JSON.stringify({ message }),
+    });
+    const box = card.querySelector(".post-comments");
+    box.insertAdjacentHTML("beforeend", renderComment(data.comment));
+    const n = card.querySelectorAll(".comment").length;
+    card.querySelector(".post-stats span:last-child").textContent = `${n} kommentarer`;
+  } catch (e) {
+    toast(e.message, "error");
+  }
+}
+
+async function publishPost() {
+  const s = getSession();
+  if (!s) return toast("Logga in först.", "error");
+  const text = $("#composer-text").value.trim();
+  if (!text && !composerImageData) return toast("Skriv något eller lägg till en bild.", "error");
+
+  try {
+    await api("/api/v1/wall", {
+      method: "POST",
+      body: JSON.stringify({
+        message: text || " ",
+        ...(composerImageData ? { image_data: composerImageData } : {}),
+      }),
+    });
+    $("#composer-text").value = "";
+    composerImageData = null;
+    $("#composer-preview").hidden = true;
+    toast("Inlägg publicerat!");
+    loadFeed();
+  } catch (e) {
+    toast(e.message, "error");
+  }
+}
+
+async function loadSidebar() {
+  const friendsEl = $("#sidebar-friends");
+  const contacts = $("#contacts-list");
+  const suggestions = $("#suggestions-list");
+  friendsEl.innerHTML = "";
+  contacts.innerHTML = "";
+  suggestions.innerHTML = "";
+
+  const s = getSession();
+  if (s?.token) {
+    try {
+      const { data } = await api("/api/v1/friends");
+      if (data.pending_incoming?.length) {
+        friendsEl.innerHTML = "<p><strong>Vänförfrågningar</strong></p>";
+        data.pending_incoming.forEach((u) => {
+          const row = document.createElement("div");
+          row.className = "contact-row";
+          row.innerHTML = `
+            <img src="${u.avatar_url}" alt="" />
+            <span>${escapeHtml(u.display_name)}</span>
+            <button type="button" class="btn btn-fb btn-accept" data-u="${escapeHtml(u.username)}">Acceptera</button>
+          `;
+          row.querySelector(".btn-accept").addEventListener("click", () => acceptFriend(u.username));
+          friendsEl.appendChild(row);
+        });
+      }
+      data.friends?.forEach((u) => contacts.appendChild(contactRow(u, false)));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  try {
+    const { data: members } = await api("/api/v1/");
+    const me = s?.user?.username;
+    const list = (members || []).filter((u) => u.username !== me).slice(0, 8);
+    list.forEach((u) => suggestions.appendChild(contactRow(u, true)));
+  } catch {
+    /* ignore */
+  }
+}
+
+function contactRow(u, showAdd) {
+  const row = document.createElement("div");
+  row.className = "contact-row";
+  row.innerHTML = `
+    <a href="#/profile/${encodeURIComponent(u.username)}">
+      <img src="${avatarSrc(u)}" alt="" />
+    </a>
+    <a href="#/profile/${encodeURIComponent(u.username)}">${escapeHtml(displayName(u))}</a>
+    ${showAdd ? `<button type="button" class="btn btn-secondary btn-add" data-u="${escapeHtml(u.username)}">+ Vän</button>` : ""}
+  `;
+  row.querySelector(".btn-add")?.addEventListener("click", () => sendFriendRequest(u.username));
+  return row;
+}
+
+async function sendFriendRequest(username) {
+  if (!getSession()) return toast("Logga in.", "error");
+  try {
+    await api("/api/v1/friends/request", { method: "POST", body: JSON.stringify({ username }) });
+    toast(`Vänförfrågan skickad till @${username}`);
+    loadSidebar();
+  } catch (e) {
+    toast(e.message, "error");
+  }
+}
+
+async function acceptFriend(username) {
+  try {
+    await api("/api/v1/friends/accept", { method: "POST", body: JSON.stringify({ username }) });
+    toast(`Du och @${username} är nu vänner!`);
+    loadSidebar();
+    loadFeed();
+  } catch (e) {
+    toast(e.message, "error");
   }
 }
 
 async function loadProfile(username) {
-  const loading = $("#profile-loading");
-  const content = $("#profile-content");
-  const notFound = $("#profile-not-found");
-  const edit = $("#profile-edit");
-
-  loading.hidden = false;
-  content.hidden = true;
-  notFound.hidden = true;
-  edit.hidden = true;
+  const cover = $("#profile-cover");
+  const avatar = $("#profile-avatar");
+  const posts = $("#profile-posts");
+  posts.innerHTML = "<p class='muted'>Laddar…</p>";
 
   try {
     const { data } = await api(`/api/v1/users/${encodeURIComponent(username)}`);
-    loading.hidden = true;
-    content.hidden = false;
+    cover.style.background = `linear-gradient(135deg, ${data.cover_color || "#1877f2"}, #6a5acd)`;
+    avatar.src = avatarSrc(data);
+    $("#profile-name").textContent = displayName(data);
+    $("#profile-handle").textContent = `@${data.username}`;
+    $("#profile-bio").textContent = data.bio || "Ingen presentation.";
 
-    $("#profile-avatar").src = avatarUrl(data.avatar_id);
-    $("#profile-avatar").alt = `Avatar för @${data.username}`;
-    $("#profile-display-name").textContent = displayName(data);
-    $("#profile-username").textContent = `@${data.username}`;
-    $("#profile-bio").textContent = data.bio || "Ingen presentation ännu.";
-    $("#profile-meta").textContent = `Medlem sedan ${data.created}`;
-
-    const posts = data.posts || [];
-    const postsEl = $("#profile-posts");
-    const postsEmpty = $("#profile-posts-empty");
-    postsEl.innerHTML = "";
-    if (posts.length === 0) {
-      postsEmpty.hidden = false;
-    } else {
-      postsEmpty.hidden = true;
-      posts.forEach((p) => postsEl.appendChild(renderWallPost(p)));
-    }
+    const actions = $("#profile-actions");
+    actions.innerHTML = "";
+    const s = getSession();
 
     if (data.isOwner) {
-      edit.hidden = false;
-      let selectedAvatar = data.avatar_id || 1;
-      buildAvatarPicker($("#profile-avatar-options"), selectedAvatar, (id) => {
-        selectedAvatar = id;
-      });
+      $("#profile-edit").hidden = false;
+      $("#profile-upload-label").hidden = false;
       $("#edit-bio").value = data.bio || "";
       $("#edit-name").value = data.name || "";
       $("#edit-surname").value = data.surname || "";
-
-      $("#btn-save-profile").onclick = async () => {
-        try {
-          const { data: updated } = await api(
-            `/api/v1/users/${encodeURIComponent(username)}`,
-            {
-              method: "PATCH",
-              body: JSON.stringify({
-                avatar_id: selectedAvatar,
-                bio: $("#edit-bio").value.trim(),
-                name: $("#edit-name").value.trim() || undefined,
-                surname: $("#edit-surname").value.trim() || undefined,
-              }),
-            }
-          );
-          const session = getSession();
-          if (session) {
-            setSession({ token: session.token, user: updated });
-          }
-          showToast("Profil sparad!");
-          loadProfile(username);
-          loadUsers();
-        } catch (err) {
-          showToast(err.message, "error");
-        }
-      };
-
-      $("#btn-delete-profile").onclick = async () => {
-        const pw = $("#delete-password").value;
-        if (!pw) {
-          showToast("Ange lösenord för att radera kontot.", "error");
-          return;
-        }
-        if (!confirm("Radera ditt konto permanent? Det går inte att ångra.")) return;
-        try {
-          await api(`/api/v1/users/${encodeURIComponent(username)}`, {
-            method: "DELETE",
-            body: JSON.stringify({ password: pw }),
-          });
-          clearSession();
-          showToast("Kontot är raderat.");
-          location.hash = "#/";
-          loadUsers();
-          loadWall();
-        } catch (err) {
-          showToast(err.message, "error");
-        }
-      };
-    }
-  } catch (err) {
-    loading.hidden = true;
-    if (err.message?.includes("finns inte")) {
-      notFound.hidden = false;
+      $("#edit-cover").value = data.cover_color || "#1877f2";
+      buildAvatarPicker($("#edit-avatars"), data.avatar_id, (id) => {
+        registerAvatarId = id;
+      });
     } else {
-      showToast(err.message, "error");
-      notFound.hidden = false;
+      $("#profile-edit").hidden = true;
+      $("#profile-upload-label").hidden = true;
+      if (s?.user && data.friend_status === "none") {
+        const b = document.createElement("button");
+        b.className = "btn btn-fb";
+        b.textContent = "+ Lägg till vän";
+        b.onclick = () => sendFriendRequest(username);
+        actions.appendChild(b);
+      } else if (data.friend_status === "pending_incoming") {
+        const b = document.createElement("button");
+        b.className = "btn btn-fb";
+        b.textContent = "Acceptera vänförfrågan";
+        b.onclick = () => acceptFriend(username);
+        actions.appendChild(b);
+      } else if (data.friend_status === "friends") {
+        actions.innerHTML = '<span class="muted">✓ Vänner</span>';
+      } else if (data.friend_status === "pending_outgoing") {
+        actions.innerHTML = '<span class="muted">Förfrågan skickad</span>';
+      }
     }
+
+    posts.innerHTML = "";
+    if (!data.posts?.length) {
+      posts.innerHTML = "<p class='muted'>Inga inlägg ännu.</p>";
+    } else {
+      data.posts.forEach((p) => posts.appendChild(renderPostCard(p)));
+    }
+  } catch (e) {
+    posts.innerHTML = `<p class='muted'>${escapeHtml(e.message)}</p>`;
   }
 }
 
-form?.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const formData = new FormData(form);
-  if (!validateForm(formData)) return;
-
-  const btn = $("#btn-submit");
-  const label = $(".btn-label", btn);
-  const spinner = $(".btn-spinner", btn);
-  btn.disabled = true;
-  label.hidden = true;
-  spinner.hidden = false;
-
-  try {
-    const { data } = await api("/api/v1/", {
-      method: "POST",
-      body: JSON.stringify(buildPayload(formData)),
-    });
-    showToast(`Konto @${data.username} skapat! Logga in för att posta.`);
-    form.reset();
-    $("#avatar_id").value = "1";
-    buildAvatarPicker($("#avatar-options"), 1, (id) => {
-      $("#avatar_id").value = String(id);
-    });
-    clearFieldErrors();
-    await loadUsers();
-  } catch (err) {
-    const msg = err.message || "Registrering misslyckades";
-    if (msg.includes("email already")) showToast("E-posten är redan registrerad.", "error");
-    else if (msg.includes("user already")) showToast("Användarnamnet finns redan.", "error");
-    else showToast(msg, "error");
-  } finally {
-    btn.disabled = false;
-    label.hidden = false;
-    spinner.hidden = true;
-  }
-});
-
-wallForm?.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const session = getSession();
-  if (!session?.user?.username) {
-    showToast("Logga in för att posta på väggen.", "error");
-    return;
-  }
-  const message = wallMessage.value.trim();
-  if (!message) {
-    showToast("Skriv ett meddelande.", "error");
-    return;
+async function saveProfile(username) {
+  const payload = {
+    bio: $("#edit-bio").value.trim(),
+    name: $("#edit-name").value.trim() || undefined,
+    surname: $("#edit-surname").value.trim() || undefined,
+    cover_color: $("#edit-cover").value,
+  };
+  if (registerAvatarData) {
+    payload.avatar_image = registerAvatarData;
+  } else {
+    payload.use_preset_avatar = true;
+    payload.avatar_id = registerAvatarId;
   }
   try {
-    await api("/api/v1/wall", {
-      method: "POST",
-      body: JSON.stringify({ username: session.user.username, message }),
+    const { data } = await api(`/api/v1/users/${encodeURIComponent(username)}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
     });
-    showToast("Inlägg publicerat!");
-    wallForm.reset();
-    wallChars.textContent = "0";
-    await loadWall();
+    const s = getSession();
+    if (s) setSession({ ...s, user: data });
+    toast("Profil sparad!");
+    loadProfile(username);
+    syncNav();
+  } catch (e) {
+    toast(e.message, "error");
+  }
+}
+
+$("#login-form")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  try {
+    const { data } = await api("/api/v1/auth/login", {
+      method: "POST",
+      body: JSON.stringify({
+        username: fd.get("username")?.trim(),
+        password: fd.get("password"),
+      }),
+    });
+    setSession(data);
+    e.target.reset();
+    toast(`Välkommen, ${displayName(data.user)}!`);
+    location.hash = "#/";
   } catch (err) {
-    showToast(err.message || "Kunde inte publicera", "error");
+    toast(err.message, "error");
   }
 });
 
-wallMessage?.addEventListener("input", () => {
-  wallChars.textContent = String(wallMessage.value.length);
-});
-
-loginForm?.addEventListener("submit", handleLogin);
 $("#btn-logout")?.addEventListener("click", () => {
   clearSession();
-  showToast("Du är utloggad.");
+  toast("Utloggad");
+  location.hash = "#/";
 });
-$("#btn-refresh")?.addEventListener("click", () => {
-  loadUsers();
-  loadWall();
-  checkHealth();
-  const route = parseRoute();
-  if (route.view === "profile") loadProfile(route.username);
+
+$("#btn-publish")?.addEventListener("click", publishPost);
+
+$("#composer-image")?.addEventListener("change", async (e) => {
+  try {
+    composerImageData = await readFileAsDataUrl(e.target.files[0]);
+    $("#composer-preview-img").src = composerImageData;
+    $("#composer-preview").hidden = false;
+  } catch (err) {
+    toast(err.message, "error");
+  }
+});
+
+$("#composer-clear-img")?.addEventListener("click", () => {
+  composerImageData = null;
+  $("#composer-preview").hidden = true;
+  $("#composer-image").value = "";
+});
+
+$("#register-form")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const payload = {
+    username: fd.get("username")?.trim(),
+    password: fd.get("password"),
+    bio: fd.get("bio")?.trim() || undefined,
+    email: fd.get("email")?.trim() || undefined,
+    name: fd.get("name")?.trim() || undefined,
+    surname: fd.get("surname")?.trim() || undefined,
+  };
+  if (registerAvatarData) payload.avatar_image = registerAvatarData;
+  else payload.avatar_id = registerAvatarId;
+
+  $("#register-error").textContent = "";
+  try {
+    const { data } = await api("/api/v1/", { method: "POST", body: JSON.stringify(payload) });
+    toast(`Konto @${data.username} skapat! Logga in.`);
+    location.hash = "#/";
+    e.target.reset();
+    registerAvatarData = null;
+    registerAvatarId = 1;
+  } catch (err) {
+    $("#register-error").textContent = err.message;
+    toast(err.message, "error");
+  }
+});
+
+$("#register-upload")?.addEventListener("change", async (e) => {
+  try {
+    registerAvatarData = await readFileAsDataUrl(e.target.files[0]);
+    $("#register-preview").src = registerAvatarData;
+    $$("#register-avatars input").forEach((i) => (i.checked = false));
+  } catch (err) {
+    toast(err.message, "error");
+  }
+});
+
+$("#profile-upload")?.addEventListener("change", async (e) => {
+  const u = getSession()?.user?.username;
+  if (!u) return;
+  try {
+    const image = await readFileAsDataUrl(e.target.files[0]);
+    const { data } = await api(`/api/v1/users/${encodeURIComponent(u)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ avatar_image: image }),
+    });
+    const s = getSession();
+    if (s) setSession({ ...s, user: data });
+    toast("Profilbild uppdaterad!");
+    syncNav();
+    loadProfile(u);
+  } catch (err) {
+    toast(err.message, "error");
+  }
+});
+
+$("#edit-upload")?.addEventListener("change", async (e) => {
+  try {
+    registerAvatarData = await readFileAsDataUrl(e.target.files[0]);
+    $("#profile-avatar").src = registerAvatarData;
+  } catch (err) {
+    toast(err.message, "error");
+  }
+});
+
+$("#btn-save-profile")?.addEventListener("click", () => {
+  const u = getSession()?.user?.username;
+  if (u) saveProfile(u);
+});
+
+$("#btn-delete-profile")?.addEventListener("click", async () => {
+  const u = getSession()?.user?.username;
+  const pw = $("#delete-password").value;
+  if (!u || !pw) return toast("Ange lösenord.", "error");
+  if (!confirm("Radera kontot permanent?")) return;
+  try {
+    await api(`/api/v1/users/${encodeURIComponent(u)}`, {
+      method: "DELETE",
+      body: JSON.stringify({ password: pw }),
+    });
+    clearSession();
+    toast("Kontot är raderat.");
+    location.hash = "#/";
+    loadFeed();
+  } catch (e) {
+    toast(e.message, "error");
+  }
+});
+
+$("#member-search")?.addEventListener("input", async (e) => {
+  const q = e.target.value.trim().toLowerCase();
+  if (q.length < 2) return;
+  try {
+    const { data } = await api("/api/v1/");
+    const hit = (data || []).find((u) => u.username.includes(q) || displayName(u).toLowerCase().includes(q));
+    if (hit) location.hash = `#/profile/${encodeURIComponent(hit.username)}`;
+  } catch {
+    /* ignore */
+  }
 });
 
 window.addEventListener("hashchange", () => showView(parseRoute()));
 
-buildAvatarPicker($("#avatar-options"), 1, (id) => {
-  $("#avatar_id").value = String(id);
-});
-
-updateSessionUI();
+syncNav();
 checkHealth();
-loadUsers();
-loadWall();
 showView(parseRoute());

@@ -1,6 +1,7 @@
 import config from "../../../config";
 import { usersRepository } from "../data-access";
 import { wallRepository } from "../data-access/wall";
+import { socialRepository } from "../data-access/social";
 import { makeInputObj } from "../entities";
 import makeDataManipulation from "../entities/data-manipulation";
 import { logger } from "../../libs/logger";
@@ -13,8 +14,15 @@ import {
   createProfileUpdate,
   createProfileDelete,
 } from "./profile";
+import { createFeedGet } from "./feed";
+import { createSocialActions } from "./social";
 
 const errorMsgs = config.ERROR_MSG;
+const social = createSocialActions({
+  socialRepository,
+  wallRepository,
+  usersRepository,
+});
 
 const post = ({ params }: { params: Record<string, unknown> }) =>
   createPost({
@@ -31,14 +39,37 @@ const get = () =>
     logger,
   }).get();
 
-const getWall = () =>
-  createWallGet({ wallRepository, logger }).get();
+const getFeed = (viewer?: string) =>
+  createFeedGet({
+    wallRepository,
+    usersRepository,
+    socialRepository,
+    makeDataManipulation,
+  }).get(viewer);
 
-const postWall = ({ params }: { params: Record<string, unknown> }) =>
-  createWallPost({ wallRepository, usersRepository, logger }).post({
-    params,
-    errorMsgs: errorMsgs.post,
-  });
+const getWall = (viewer?: string) =>
+  createWallGet({
+    wallRepository,
+    usersRepository,
+    socialRepository,
+    makeDataManipulation,
+    logger,
+  }).get(viewer);
+
+const postWall = ({
+  authUsername,
+  params,
+}: {
+  authUsername: string;
+  params: Record<string, unknown>;
+}) =>
+  createWallPost({
+    wallRepository,
+    usersRepository,
+    socialRepository,
+    makeDataManipulation,
+    logger,
+  }).post({ authUsername, params, errorMsgs: errorMsgs.post });
 
 const login = ({ params }: { params: Record<string, unknown> }) =>
   createAuthLogin({ usersRepository, makeDataManipulation, logger }).login({
@@ -50,6 +81,7 @@ const getProfile = (username: string, viewer?: string) =>
   createProfileGet({
     usersRepository,
     wallRepository,
+    socialRepository,
     makeDataManipulation,
   }).get(username, viewer);
 
@@ -75,10 +107,12 @@ const deleteProfile = (
 export {
   post,
   get,
+  getFeed,
   getWall,
   postWall,
   login,
   getProfile,
   updateProfile,
   deleteProfile,
+  social,
 };

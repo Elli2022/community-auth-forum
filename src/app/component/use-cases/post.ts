@@ -1,4 +1,5 @@
 import sanitizeHtml from "sanitize-html";
+import { parseDataUrl } from "../../libs/image";
 import { mapUserToResponse } from "../../db/map-user";
 import type makeUsersRepository from "../../db/users-repository";
 
@@ -62,10 +63,23 @@ export default function createPost({
       const createdMs = Number(userFactory.created());
       const modifiedMs = Number(userFactory.modified());
 
+      let avatar_type = "preset";
+      let avatar_image: string | null = null;
+      if (
+        typeof params.avatar_image === "string" &&
+        params.avatar_image.trim()
+      ) {
+        parseDataUrl(params.avatar_image);
+        avatar_type = "custom";
+        avatar_image = params.avatar_image.trim();
+      }
+
       const userInput = {
         username: userFactory.username(),
         password: userFactory.password(),
         avatar_id,
+        avatar_type,
+        avatar_image,
         bio,
         created: new Date(createdMs).toISOString(),
         modified: new Date(modifiedMs).toISOString(),
@@ -73,6 +87,8 @@ export default function createPost({
         username: string;
         password: string;
         avatar_id: number;
+        avatar_type: string;
+        avatar_image: string | null;
         bio: string;
         created: string;
         modified: string;

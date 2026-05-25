@@ -3,259 +3,165 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta
-      name="description"
-      content="Community Auth Forum – registrera, logga in, profiler och meddelandevägg."
-    />
+    <meta name="description" content="Community Auth Forum – socialt nätverk med profiler, vänner och flöde." />
     <title>Community Auth Forum</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap"
-      rel="stylesheet"
-    />
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <div class="bg-pattern" aria-hidden="true"></div>
-
-    <header class="site-header">
-      <a href="#/" class="brand brand-link">
-        <span class="brand-icon" aria-hidden="true">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-            <path
-              d="M16 11c1.66 0 3-1.34 3-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3Zm-8 0c1.66 0 3-1.34 3-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3Zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13Zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5Z"
-              fill="currentColor"
-            />
-          </svg>
-        </span>
-        <div>
-          <h1>Community Auth Forum</h1>
-          <p class="brand-sub">Forum med profiler · sedan nodejs-3rd-challenge-api</p>
-        </div>
+    <nav class="topnav" aria-label="Huvudmeny">
+      <a href="#/" class="topnav-logo">
+        <span class="logo-icon">f</span>
+        <span class="logo-text">Community</span>
       </a>
-      <div class="header-actions">
-        <span id="health-badge" class="health-badge" role="status">Kontrollerar…</span>
-        <div id="session-bar" class="session-bar" hidden>
-          <a id="session-profile-link" href="#" class="session-user"></a>
-          <button type="button" id="btn-logout" class="btn btn-ghost btn-sm">Logga ut</button>
-        </div>
-        <form id="login-form" class="login-form" novalidate>
-          <input
-            id="login-username"
-            name="username"
-            type="text"
-            placeholder="Användarnamn"
-            autocomplete="username"
-          />
-          <input
-            id="login-password"
-            name="password"
-            type="password"
-            placeholder="Lösenord"
-            autocomplete="current-password"
-          />
-          <button type="submit" class="btn btn-primary btn-sm">Logga in</button>
-        </form>
-        <button type="button" id="btn-refresh" class="btn btn-ghost btn-sm">
-          Uppdatera
-        </button>
+      <div class="topnav-search">
+        <input type="search" id="member-search" placeholder="Sök medlemmar…" autocomplete="off" />
       </div>
-    </header>
-
-    <main id="view-home" class="layout layout-with-wall">
-      <section class="card card-form" aria-labelledby="form-title">
-        <div class="card-head">
-          <h2 id="form-title">Registrera konto</h2>
-          <p class="card-desc">
-            Välj avatar, skapa konto och börja posta på väggen.
-          </p>
+      <div class="topnav-actions">
+        <a href="#/" class="nav-btn" data-nav="home" title="Hem">🏠</a>
+        <a href="#/register" class="nav-btn" data-nav="register" title="Registrera" id="nav-register">➕</a>
+        <span id="health-dot" class="health-dot" title="API-status"></span>
+        <div id="session-box" class="session-box" hidden>
+          <a id="nav-me" href="#" class="nav-me">
+            <img id="nav-avatar" src="/avatars/1.svg" alt="" width="36" height="36" />
+          </a>
+          <button type="button" id="btn-logout" class="btn-text">Logga ut</button>
         </div>
+        <form id="login-form" class="login-inline" novalidate>
+          <input name="username" type="text" placeholder="Användarnamn" autocomplete="username" />
+          <input name="password" type="password" placeholder="Lösenord" autocomplete="current-password" />
+          <button type="submit" class="btn btn-fb">Logga in</button>
+        </form>
+      </div>
+    </nav>
 
+    <div id="view-home" class="fb-layout">
+      <aside class="sidebar sidebar-left">
+        <a href="#/" class="sidebar-link active">📰 Nyhetsflöde</a>
+        <a href="#/register" class="sidebar-link">👤 Skapa konto</a>
+        <a id="sidebar-profile" href="#" class="sidebar-link" hidden>🙂 Min profil</a>
+        <hr />
+        <h3 class="sidebar-title">Genvägar</h3>
+        <div id="sidebar-friends" class="sidebar-friends"></div>
+      </aside>
+
+      <main class="feed-main">
+        <section id="composer" class="composer card" hidden>
+          <div class="composer-head">
+            <img id="composer-avatar" src="/avatars/1.svg" alt="" width="40" height="40" />
+            <textarea id="composer-text" rows="2" placeholder="Vad tänker du på?" maxlength="500"></textarea>
+          </div>
+          <div id="composer-preview" class="composer-preview" hidden>
+            <img id="composer-preview-img" alt="Förhandsvisning" />
+            <button type="button" id="composer-clear-img" class="btn-text">Ta bort bild</button>
+          </div>
+          <div class="composer-actions">
+            <label class="composer-photo">
+              📷 Foto
+              <input type="file" id="composer-image" accept="image/jpeg,image/png,image/webp" hidden />
+            </label>
+            <button type="button" id="btn-publish" class="btn btn-fb">Publicera</button>
+          </div>
+        </section>
+
+        <section id="guest-banner" class="guest-banner card">
+          <h2>Välkommen till Community Auth Forum</h2>
+          <p>Logga in eller <a href="#/register">skapa konto</a> för att posta, gilla och bli vänner.</p>
+        </section>
+
+        <div id="feed-loading" class="feed-state">Laddar flöde…</div>
+        <div id="feed-empty" class="feed-state" hidden>Inget i flödet ännu. Bli först att posta!</div>
+        <div id="feed-posts"></div>
+      </main>
+
+      <aside class="sidebar sidebar-right">
+        <div class="card contacts-card">
+          <h3>Kontakter</h3>
+          <div id="contacts-list" class="contacts-list"></div>
+        </div>
+        <div class="card contacts-card">
+          <h3>Förslag</h3>
+          <div id="suggestions-list" class="contacts-list"></div>
+        </div>
+      </aside>
+    </div>
+
+    <div id="view-register" class="view-register" hidden>
+      <div class="card register-card">
+        <h1>Skapa konto</h1>
+        <p class="muted">Välj avatar eller ladda upp egen profilbild</p>
         <form id="register-form" novalidate>
-          <fieldset class="avatar-picker">
-            <legend>Välj avatar</legend>
-            <div class="avatar-options" id="avatar-options"></div>
-            <input type="hidden" name="avatar_id" id="avatar_id" value="1" />
-          </fieldset>
-
-          <div class="field-row">
-            <div class="field">
-              <label for="username">Användarnamn <span class="req">*</span></label>
-              <input
-                id="username"
-                name="username"
-                type="text"
-                autocomplete="username"
-                placeholder="t.ex. ellie01"
-                required
-              />
-              <span class="hint">5–24 tecken, små bokstäver och siffror</span>
-              <span class="field-error" data-for="username"></span>
-            </div>
-            <div class="field">
-              <label for="password">Lösenord <span class="req">*</span></label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autocomplete="new-password"
-                required
-              />
-              <span class="field-error" data-for="password"></span>
-            </div>
-          </div>
-
-          <div class="field">
-            <label for="bio">Om mig</label>
-            <textarea id="bio" name="bio" rows="2" maxlength="280" placeholder="Kort presentation…"></textarea>
-          </div>
-
-          <div class="field">
-            <label for="email">E-post</label>
-            <input id="email" name="email" type="email" autocomplete="email" />
-            <span class="hint">Valfritt – måste vara unik</span>
-            <span class="field-error" data-for="email"></span>
-          </div>
-
-          <div class="field-row">
-            <div class="field">
-              <label for="name">Förnamn</label>
-              <input id="name" name="name" type="text" autocomplete="given-name" />
-            </div>
-            <div class="field">
-              <label for="surname">Efternamn</label>
-              <input id="surname" name="surname" type="text" autocomplete="family-name" />
-            </div>
-          </div>
-
-          <div class="form-actions">
-            <button type="submit" class="btn btn-primary" id="btn-submit">
-              <span class="btn-label">Skapa konto</span>
-              <span class="btn-spinner" hidden aria-hidden="true"></span>
-            </button>
-            <button type="reset" class="btn btn-ghost">Rensa</button>
-          </div>
-        </form>
-      </section>
-
-      <section class="card card-list" aria-labelledby="list-title">
-        <div class="card-head">
-          <h2 id="list-title">Medlemmar</h2>
-          <p class="card-desc">
-            <span id="user-count">0</span> medlemmar · klicka för profil
-          </p>
-        </div>
-        <div class="list-body">
-          <div id="list-loading" class="list-state">
-            <div class="spinner" aria-hidden="true"></div>
-            <p>Hämtar medlemmar…</p>
-          </div>
-          <div id="list-empty" class="list-state" hidden>
-            <p>Inga medlemmar ännu</p>
-          </div>
-          <ul id="user-list" class="user-list" hidden></ul>
-        </div>
-      </section>
-
-      <section class="card card-wall" aria-labelledby="wall-title">
-        <div class="card-head">
-          <h2 id="wall-title">Väggen</h2>
-          <p class="card-desc">Dela med dig – som på ett forum</p>
-        </div>
-        <form id="wall-form" class="wall-form" novalidate>
-          <div class="field wall-message-field">
-            <label for="wall-message">Meddelande <span class="req">*</span></label>
-            <textarea
-              id="wall-message"
-              name="message"
-              rows="3"
-              maxlength="500"
-              placeholder="Vad vill du dela?"
-              required
-            ></textarea>
-            <span class="hint"><span id="wall-chars">0</span>/500 · logga in för att posta</span>
-          </div>
-          <div class="form-actions">
-            <button type="submit" class="btn btn-primary">Publicera</button>
-          </div>
-        </form>
-        <div id="wall-loading" class="list-state wall-list-state" hidden>
-          <div class="spinner" aria-hidden="true"></div>
-        </div>
-        <div id="wall-empty" class="list-state wall-list-state" hidden>
-          <p>Inga inlägg ännu</p>
-        </div>
-        <ul id="wall-list" class="wall-list" hidden></ul>
-      </section>
-    </main>
-
-    <main id="view-profile" class="profile-view" hidden>
-      <section class="card profile-card">
-        <a href="#/" class="back-link">← Tillbaka till forumet</a>
-        <div id="profile-loading" class="list-state">
-          <div class="spinner" aria-hidden="true"></div>
-          <p>Laddar profil…</p>
-        </div>
-        <div id="profile-content" hidden>
-          <header class="profile-header">
-            <img id="profile-avatar" class="profile-avatar-img" src="" alt="" width="96" height="96" />
+          <div class="register-avatar-row">
+            <img id="register-preview" src="/avatars/1.svg" alt="" width="96" height="96" class="avatar-lg" />
             <div>
-              <h2 id="profile-display-name"></h2>
-              <p class="profile-username" id="profile-username"></p>
-              <p id="profile-bio" class="profile-bio"></p>
-              <p id="profile-meta" class="muted"></p>
-            </div>
-          </header>
-          <div id="profile-edit" class="profile-edit" hidden>
-            <h3>Redigera din profil</h3>
-            <fieldset class="avatar-picker">
-              <legend>Byt avatar</legend>
-              <div class="avatar-options" id="profile-avatar-options"></div>
-            </fieldset>
-            <div class="field">
-              <label for="edit-bio">Om mig</label>
-              <textarea id="edit-bio" rows="3" maxlength="280"></textarea>
-            </div>
-            <div class="field-row">
-              <div class="field">
-                <label for="edit-name">Förnamn</label>
-                <input id="edit-name" type="text" />
-              </div>
-              <div class="field">
-                <label for="edit-surname">Efternamn</label>
-                <input id="edit-surname" type="text" />
-              </div>
-            </div>
-            <button type="button" id="btn-save-profile" class="btn btn-primary">Spara ändringar</button>
-            <hr class="profile-divider" />
-            <h3>Radera konto</h3>
-            <p class="muted">Endast du kan radera din egen profil. Inlägg tas bort.</p>
-            <div class="field-row delete-row">
-              <input id="delete-password" type="password" placeholder="Bekräfta med lösenord" />
-              <button type="button" id="btn-delete-profile" class="btn btn-danger">Radera mitt konto</button>
+              <fieldset class="avatar-picker">
+                <legend>Förvalda avatarer</legend>
+                <div id="register-avatars" class="avatar-options"></div>
+              </fieldset>
+              <label class="upload-label">
+                📤 Ladda upp egen bild
+                <input type="file" id="register-upload" accept="image/jpeg,image/png,image/webp" hidden />
+              </label>
+              <input type="hidden" name="avatar_id" id="reg-avatar-id" value="1" />
             </div>
           </div>
-          <h3>Inlägg på väggen</h3>
-          <ul id="profile-posts" class="wall-list"></ul>
-          <p id="profile-posts-empty" class="muted" hidden>Inga inlägg ännu.</p>
+          <div class="field-grid">
+            <label>Användarnamn *<input name="username" required placeholder="ellie01" /></label>
+            <label>Lösenord *<input name="password" type="password" required /></label>
+            <label>Förnamn<input name="name" /></label>
+            <label>Efternamn<input name="surname" /></label>
+            <label class="span-2">E-post<input name="email" type="email" /></label>
+            <label class="span-2">Om mig<textarea name="bio" rows="2" maxlength="280"></textarea></label>
+          </div>
+          <p class="field-error" id="register-error"></p>
+          <button type="submit" class="btn btn-fb btn-block">Registrera</button>
+          <p class="muted center"><a href="#/">Har du konto? Logga in</a></p>
+        </form>
+      </div>
+    </div>
+
+    <div id="view-profile" class="view-profile" hidden>
+      <div id="profile-cover" class="profile-cover"></div>
+      <div class="profile-shell card">
+        <div class="profile-top">
+          <div class="profile-avatar-wrap">
+            <img id="profile-avatar" class="avatar-xl" src="/avatars/1.svg" alt="" />
+            <label id="profile-upload-label" class="avatar-upload-btn" hidden>
+              📷
+              <input type="file" id="profile-upload" accept="image/jpeg,image/png,image/webp" hidden />
+            </label>
+          </div>
+          <div class="profile-info">
+            <h1 id="profile-name"></h1>
+            <p id="profile-handle" class="muted"></p>
+            <p id="profile-bio"></p>
+            <div id="profile-actions" class="profile-actions"></div>
+          </div>
         </div>
-        <p id="profile-not-found" class="muted" hidden>Användaren finns inte.</p>
-      </section>
-    </main>
+        <div id="profile-edit" class="profile-edit" hidden>
+          <h3>Redigera profil</h3>
+          <div id="edit-avatars" class="avatar-options"></div>
+          <label class="upload-label">📤 Byt profilbild<input type="file" id="edit-upload" accept="image/jpeg,image/png,image/webp" hidden /></label>
+          <label>Om mig<textarea id="edit-bio" rows="2" maxlength="280"></textarea></label>
+          <div class="field-grid">
+            <label>Förnamn<input id="edit-name" /></label>
+            <label>Efternamn<input id="edit-surname" /></label>
+          </div>
+          <label>Omslagsfärg<input type="color" id="edit-cover" value="#1877f2" /></label>
+          <button type="button" id="btn-save-profile" class="btn btn-fb">Spara</button>
+          <hr />
+          <h3>Radera konto</h3>
+          <input id="delete-password" type="password" placeholder="Lösenord" />
+          <button type="button" id="btn-delete-profile" class="btn btn-danger">Radera mitt konto</button>
+        </div>
+        <h2 class="timeline-title">Inlägg</h2>
+        <div id="profile-posts"></div>
+      </div>
+    </div>
 
-    <footer class="site-footer">
-      <p>
-        API:
-        <code>GET/POST /api/v1/</code>
-        ·
-        <code>POST /api/v1/auth/login</code>
-        ·
-        <a href="/health" target="_blank" rel="noopener">/health</a>
-      </p>
-    </footer>
-
-    <div id="toast-root" class="toast-root" aria-live="polite" aria-atomic="true"></div>
+    <div id="toast-root" class="toast-root" aria-live="polite"></div>
     <script src="/app.js" type="module"></script>
   </body>
 </html>
