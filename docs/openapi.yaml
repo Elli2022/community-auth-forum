@@ -1,0 +1,343 @@
+openapi: 3.1.0
+info:
+  title: Flödet API
+  description: |
+    REST API för Flödet (socialt nätverk med profiler, flöde, vänner och direktmeddelanden).
+    Alla lyckade svar använder `{ "err": 0, "data": ... }`. Fel `{ "err": 1, "message": "..." }`.
+  version: 1.0.0
+  contact:
+    name: Flödet
+servers:
+  - url: https://community-auth-forum.netlify.app
+    description: Produktion (Netlify)
+  - url: http://127.0.0.1:3000
+    description: Lokal utveckling
+
+tags:
+  - name: Auth
+  - name: Users
+  - name: Feed
+  - name: Posts
+  - name: Friends
+  - name: Messages
+  - name: Notifications
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        err: { type: integer, example: 1 }
+        message: { type: string }
+    SuccessEnvelope:
+      type: object
+      properties:
+        err: { type: integer, example: 0 }
+        data: {}
+
+paths:
+  /health:
+    get:
+      summary: Hälsokontroll
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+
+  /api/v1/:
+    get:
+      summary: Lista medlemmar
+      tags: [Users]
+      responses:
+        "200":
+          description: Användarlista (utan lösenord)
+    post:
+      summary: Registrera konto
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: { type: string, example: ellie01 }
+                password: { type: string, format: password }
+                email: { type: string, format: email }
+                name: { type: string }
+                surname: { type: string }
+                bio: { type: string }
+                avatar_id: { type: integer, minimum: 1, maximum: 5 }
+                avatar_image: { type: string, description: data-URL (JPEG/PNG/WebP, max 400KB) }
+      responses:
+        "201":
+          description: Skapad
+
+  /api/v1/auth/login:
+    post:
+      summary: Logga in
+      tags: [Auth]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: { type: string }
+                password: { type: string }
+      responses:
+        "200":
+          description: JWT + användarprofil
+
+  /api/v1/auth/forgot-password:
+    post:
+      summary: Begär återställning av lösenord (e-post)
+      tags: [Auth]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        "200":
+          description: Generiskt svar (+ ev. dev_reset_url utan e-postprovider)
+
+  /api/v1/auth/forgot-username:
+    post:
+      summary: Påminnelse om användarnamn (e-post)
+      tags: [Auth]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+
+  /api/v1/auth/reset-password:
+    post:
+      summary: Sätt nytt lösenord med token
+      tags: [Auth]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, password]
+              properties:
+                token: { type: string }
+                password: { type: string, minLength: 6 }
+
+  /api/v1/feed:
+    get:
+      summary: Personligt nyhetsflöde
+      tags: [Feed]
+      security:
+        - bearerAuth: []
+        - {}
+      description: Inloggad = inlägg från vänner + dig; annars global vägg.
+
+  /api/v1/wall:
+    get:
+      summary: Global vägg (alla inlägg)
+      tags: [Feed]
+    post:
+      summary: Publicera inlägg
+      tags: [Feed]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message: { type: string, maxLength: 500 }
+                image_data: { type: string, description: data-URL bild }
+
+  /api/v1/users/{username}:
+    get:
+      summary: Profil + tidslinje
+      tags: [Users]
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema: { type: string }
+    patch:
+      summary: Uppdatera egen profil
+      tags: [Users]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema: { type: string }
+    delete:
+      summary: Radera eget konto
+      tags: [Users]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password: { type: string }
+
+  /api/v1/users/{username}/avatar:
+    get:
+      summary: Uppladdad profilbild (binär)
+      tags: [Users]
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema: { type: string }
+
+  /api/v1/posts/{id}/like:
+    post:
+      summary: Gilla / ta bort gilla
+      tags: [Posts]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+
+  /api/v1/posts/{id}/comments:
+    post:
+      summary: Kommentera inlägg
+      tags: [Posts]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                message: { type: string, maxLength: 300 }
+
+  /api/v1/posts/{id}/share:
+    post:
+      summary: Dela inlägg till eget flöde
+      tags: [Posts]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message: { type: string, maxLength: 300 }
+
+  /api/v1/posts/{id}/image:
+    get:
+      summary: Bild tillhörande inlägg
+      tags: [Posts]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+
+  /api/v1/friends:
+    get:
+      summary: Vänner och väntande förfrågningar
+      tags: [Friends]
+      security: [{ bearerAuth: [] }]
+
+  /api/v1/friends/request:
+    post:
+      summary: Skicka vänförfrågan
+      tags: [Friends]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username]
+              properties:
+                username: { type: string }
+
+  /api/v1/friends/accept:
+    post:
+      summary: Acceptera vänförfrågan
+      tags: [Friends]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username]
+              properties:
+                username: { type: string }
+
+  /api/v1/notifications:
+    get:
+      summary: Lista notiser
+      tags: [Notifications]
+      security: [{ bearerAuth: [] }]
+
+  /api/v1/notifications/read:
+    patch:
+      summary: Markera notiser som lästa
+      tags: [Notifications]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id: { type: integer, description: Utelämna för alla }
+
+  /api/v1/messages:
+    get:
+      summary: Lista konversationer (DM)
+      tags: [Messages]
+      security: [{ bearerAuth: [] }]
+      description: Direktmeddelanden mellan accepterade vänner.
+
+  /api/v1/messages/{username}:
+    get:
+      summary: Hämta chatttråd med vän
+      tags: [Messages]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema: { type: string }
+    post:
+      summary: Skicka direktmeddelande
+      tags: [Messages]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body: { type: string, maxLength: 1000 }

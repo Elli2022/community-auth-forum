@@ -15,7 +15,8 @@
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "db:migrate": "tsx scripts/migrate.ts",
-    "audit": "npm audit"
+    "audit": "npm audit",
+    "docs:openapi": "echo 'OpenAPI: docs/openapi.yaml and public/openapi.yaml'"
   },
   "author": "",
   "license": "ISC",

@@ -1,63 +1,242 @@
 # Flödet
 
-Socialt nätverk (tidigare *Community Auth Forum* / *nodejs-3rd-challenge-api*).
+**Fullstack socialt nätverk** — profiler, nyhetsflöde, vänner, direktmeddelanden (DM), notiser och kontoåterställning. Utvecklat som vidareutveckling av utbildningsprojektet *nodejs-3rd-challenge-api*; hela git-historiken finns kvar.
 
-Forum-liknande webbapp med användarprofiler, fem valbara avatarer, inloggning (JWT) och meddelandevägg. Byggd som vidareutveckling av utbildningsprojektet **nodejs-3rd-challenge-api** — all git-historik från start till idag finns kvar i detta repo.
+| | |
+|---|---|
+| **Live** | [community-auth-forum.netlify.app](https://community-auth-forum.netlify.app) |
+| **API-spec** | [docs/openapi.yaml](docs/openapi.yaml) · [YAML på prod](https://community-auth-forum.netlify.app/openapi.yaml) |
+| **Stack** | Node.js 20+ · TypeScript · Express · PostgreSQL (Neon) · Netlify Functions |
 
-## Funktioner
+---
 
-- **Registrering** med förvald avatar (1–5) eller **egen uppladdad profilbild**
-- **Inloggning** (JWT) och **nyhetsflöde** (egna vänner + egna inlägg)
-- **Profiler** med omslagsfärg, bio, tidslinje och vänförfrågningar
-- **Inlägg** med text och bild, **gilla** och **kommentera**
-- **Vänner** — skicka/acceptera förfrågningar
-- **Radera eget konto** — inte andras profiler
+## Arkitektur
 
-## Stack
+Produktion: statisk SPA i Netlify CDN, API via serverless proxy till Express. Databas: Neon PostgreSQL (serverless driver).
 
-- Node.js 20+, Express 4, TypeScript
-- PostgreSQL (Neon i produktion, Docker lokalt)
-- Netlify (statisk UI + serverless API)
-- bcrypt, sanitize-html, helmet, JWT
+```mermaid
+flowchart TB
+  subgraph client [Klient]
+    SPA["SPA (public/)<br/>Hash-routing · fetch API"]
+  end
 
-## API (v1)
+  subgraph netlify [Netlify]
+    CDN["CDN · statiska filer"]
+    FN["Function: api.ts<br/>serverless-http"]
+    REDIR["Redirects<br/>/api/* → function<br/>/health → function"]
+  end
 
-| Metod | Sökväg | Beskrivning |
-|-------|--------|-------------|
-| GET | `/api/v1/` | Lista medlemmar |
-| POST | `/api/v1/` | Registrera |
-| POST | `/api/v1/auth/login` | Logga in |
-| GET | `/api/v1/users/:username` | Profil + inlägg |
-| PATCH | `/api/v1/users/:username` | Uppdatera egen profil (JWT) |
-| DELETE | `/api/v1/users/:username` | Radera eget konto (JWT) |
-| GET | `/api/v1/feed` | Nyhetsflöde (vänner + du) |
-| GET/POST | `/api/v1/wall` | Vägg (POST kräver inloggning) |
-| POST | `/api/v1/posts/:id/like` | Gilla / ta bort gilla |
-| POST | `/api/v1/posts/:id/comments` | Kommentera |
-| GET | `/api/v1/users/:username/avatar` | Egen uppladdad profilbild |
-| GET/POST | `/api/v1/friends` | Vänner och förfrågningar |
+  subgraph app [Express app – build/]
+    HELMET["helmet · cors · compression"]
+    AUTH["JWT middleware<br/>requireAuth · requireSelf"]
+    UC["Use cases<br/>controller → repository"]
+  end
 
-## Lokalt
+  subgraph data [Data]
+    NEON[(Neon PostgreSQL)]
+    TABLES["users · wall_posts<br/>post_likes · post_comments<br/>friendships · direct_messages<br/>notifications · password_reset_tokens"]
+  end
 
-```bash
-cp .env.example .env
-npm install
-npm run db:up
-npm run db:migrate
-npm run dev
+  SPA --> CDN
+  SPA --> REDIR
+  REDIR --> FN
+  FN --> HELMET
+  HELMET --> AUTH
+  AUTH --> UC
+  UC --> NEON
+  NEON --> TABLES
 ```
 
-Öppna `http://127.0.0.1:3000` — profiler via `#/profile/användarnamn`.
+### Lager i kodbasen
+
+| Lager | Ansvar |
+|--------|--------|
+| `public/` | SPA (ingen build-step för UI) |
+| `netlify/functions/api.ts` | Lambda-entry, kör `ensureSchema()` vid cold start |
+| `src/app/component/controller/` | HTTP-rutter, statuskoder, svar `{ err, data }` |
+| `src/app/component/use-cases/` | Affärslogik (auth, feed, vänner, DM, …) |
+| `src/app/db/` | Repositories + migrering (`migrate.ts`) |
+| `src/app/middleware/` | JWT (`requireAuth`, `requireSelf`, `optionalAuth`) |
+
+---
+
+## Funktioner (produkt)
+
+- **Auth** — registrering, JWT-inloggning, glömt lösenord/användarnamn via registrerad e-post
+- **Profiler** — avatar (förval eller uppladdning), omslagsfärg, bio, egen tidslinje
+- **Flöde** — personligt flöde (vänner + du) eller global vägg
+- **Socialt** — gilla, kommentera, dela inlägg; vänförfrågningar
+- **DM** — direktmeddelanden mellan accepterade vänner (konversationer + olästa)
+- **Notiser** — likes, kommentarer, delningar, vänner, nya meddelanden
+- **Säkerhet** — endast ägare kan PATCH/DELETE egen profil
+
+---
+
+## Säkerhet
+
+| Område | Implementation |
+|--------|----------------|
+| **Lösenord** | bcrypt (cost factor 10), lagras som `password_hash` |
+| **Session** | JWT (`jsonwebtoken`), Bearer-header, 7 dagars TTL; `JWT_SECRET` i miljö |
+| **Input** | `sanitize-html` på textfält (inga HTML-taggar i bio, inlägg, kommentarer) |
+| **Användarnamn** | Regex `^[a-z][a-z0-9]{4,23}$` — separat från e-post |
+| **Bilder** | data-URL validering (JPEG/PNG/WebP, max ~400 KB) |
+| **HTTP** | `helmet`, CORS, JSON body limit 3 MB |
+| **Auktorisering** | `requireSelf` på profil-ändring/radering; DM endast mellan vänner |
+| **Återställning** | Engångstoken i DB, 1 h giltighet, ogiltigförklaras efter användning |
+| **API-svar** | Lösenord och hash exponeras aldrig i JSON |
+
+**Produktion:** sätt stark `JWT_SECRET` och `DATABASE_URL` i Netlify env (aldrig i repo).
+
+---
+
+## API (v1) — översikt
+
+Alla svar: **`{ "err": 0, "data": ... }`** eller **`{ "err": 1, "message": "..." }`**.  
+Auth: `Authorization: Bearer <token>` där det krävs.
+
+### Auth & användare
+
+| Metod | Sökväg | Auth | Beskrivning |
+|-------|--------|------|-------------|
+| GET | `/health` | — | Hälsokontroll |
+| GET | `/api/v1/` | — | Lista medlemmar |
+| POST | `/api/v1/` | — | Registrera |
+| POST | `/api/v1/auth/login` | — | Logga in → JWT |
+| POST | `/api/v1/auth/forgot-password` | — | Återställ lösenord (e-post) |
+| POST | `/api/v1/auth/forgot-username` | — | Påminnelse användarnamn |
+| POST | `/api/v1/auth/reset-password` | — | Nytt lösenord + token |
+| GET | `/api/v1/users/:username` | Valfri | Profil + inlägg |
+| PATCH | `/api/v1/users/:username` | JWT + self | Uppdatera profil |
+| DELETE | `/api/v1/users/:username` | JWT + self | Radera konto |
+| GET | `/api/v1/users/:username/avatar` | — | Profilbild (binär) |
+
+### Flöde & inlägg
+
+| Metod | Sökväg | Auth | Beskrivning |
+|-------|--------|------|-------------|
+| GET | `/api/v1/feed` | Valfri | Nyhetsflöde |
+| GET | `/api/v1/wall` | Valfri | Global vägg |
+| POST | `/api/v1/wall` | JWT | Skapa inlägg |
+| POST | `/api/v1/posts/:id/like` | JWT | Toggle gilla |
+| POST | `/api/v1/posts/:id/comments` | JWT | Kommentar |
+| POST | `/api/v1/posts/:id/share` | JWT | Dela inlägg |
+| GET | `/api/v1/posts/:id/image` | — | Inläggsbild |
+
+### Vänner, notiser, DM
+
+| Metod | Sökväg | Auth | Beskrivning |
+|-------|--------|------|-------------|
+| GET | `/api/v1/friends` | JWT | Vänner + pending |
+| POST | `/api/v1/friends/request` | JWT | Vänförfrågan |
+| POST | `/api/v1/friends/accept` | JWT | Acceptera |
+| GET | `/api/v1/notifications` | JWT | Notiser |
+| PATCH | `/api/v1/notifications/read` | JWT | Markera lästa |
+| GET | `/api/v1/messages` | JWT | **DM:** konversationer |
+| GET | `/api/v1/messages/:username` | JWT | **DM:** tråd |
+| POST | `/api/v1/messages/:username` | JWT | **DM:** skicka |
+
+Full spec: **[docs/openapi.yaml](docs/openapi.yaml)** (OpenAPI 3.1).
+
+---
+
+## Datamodell (PostgreSQL)
+
+```
+users ──┬──< wall_posts ──┬──< post_likes
+        │                 └──< post_comments
+        ├──< friendships (user_a, user_b, status)
+        ├──< direct_messages (sender, recipient)
+        ├──< notifications
+        └──< password_reset_tokens
+
+wall_posts.shared_post_id → wall_posts (delning)
+```
+
+Migrering körs idempotent vid appstart (`ensureSchema()` + advisory lock för parallella Netlify-körningar).
+
+---
+
+## Kom igång lokalt
+
+```bash
+git clone https://github.com/Elli2022/community-auth-forum.git
+cd community-auth-forum
+cp .env.example .env
+npm install
+npm run db:up          # Docker PostgreSQL
+npm run db:migrate     # valfritt – sker även vid start
+npm run dev            # API + statisk UI på :3000
+```
+
+Öppna [http://127.0.0.1:3000](http://127.0.0.1:3000) · profiler: `#/profile/användarnamn` · DM: `#/messages`.
+
+### Tester
+
+```bash
+npm test               # kräver DATABASE_URL (t.ex. Docker)
+```
+
+### Bygga som Netlify
+
+```bash
+npm run build
+netlify deploy --prod --build
+```
+
+---
 
 ## Miljövariabler
 
-- `DATABASE_URL` — PostgreSQL
-- `JWT_SECRET` — obligatoriskt i produktion
+| Variabel | Krävs | Beskrivning |
+|----------|-------|-------------|
+| `DATABASE_URL` | Ja | PostgreSQL (Neon eller `postgresql://auth:auth@localhost:5432/authms`) |
+| `JWT_SECRET` | Prod | Stark hemlighet för JWT |
+| `PUBLIC_SITE_URL` | Prod | Bas-URL för återställningslänkar |
+| `NODE_PORT` | Nej | Default `3000` |
+| `RESEND_API_KEY` | Nej | E-post (återställning); utan → länk visas i UI |
+| `EMAIL_FROM` | Nej | Avsändare vid Resend |
 
-## Deploy (Netlify)
+---
 
-Produktionssajt efter namnbyte: **https://community-auth-forum.netlify.app** (tidigare `nodejs-3rd-challenge-api`).
+## Projektstruktur
+
+```
+├── public/                 # SPA (Flödet UI)
+├── netlify/
+│   ├── functions/api.ts    # Serverless entry
+│   └── netlify.toml        # Redirects /api → function
+├── src/app/
+│   ├── component/          # controller, use-cases, entities
+│   ├── db/                 # repositories, migrate, client
+│   ├── middleware/         # JWT
+│   └── libs/               # auth, email, image, logger
+├── docs/openapi.yaml
+├── scripts/migrate.ts
+└── docker-compose.yml      # Lokal Postgres
+```
+
+---
+
+## Designbeslut (kort)
+
+1. **Monolitisk Express i en function** — en deploy-enhet, enklare för portfolio; skalning via Netlify + Neon.
+2. **Repository + use cases** — testbar domänlogik utan att byta till tung DDD.
+3. **JWT stateless** — passar serverless; ingen session-store.
+4. **Bilder i DB som data-URL** — undviker S3/Netlify Blobs i MVP; begränsad storlek med validering.
+5. **DM endast mellan vänner** — minskar spam/harassment-yta i demo.
+
+---
 
 ## Historik
 
-Projektet började som Node.js 3rd challenge / authentication microservice (`nodejs-3rd-challenge-api`). Repot och Netlify har bytt namn till **community-auth-forum**; commits och branches är oförändrade.
+| Fas | Namn |
+|-----|------|
+| Utbildning | `nodejs-3rd-challenge-api` |
+| Portfolio | `community-auth-forum` (repo) · **Flödet** (produktnamn) |
+
+---
+
+## Licens
+
+ISC (se `package.json`).
