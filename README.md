@@ -174,6 +174,8 @@ npm run dev            # API + statisk UI på :3000
 
 Öppna [http://127.0.0.1:3000](http://127.0.0.1:3000) · profiler: `#/profile/användarnamn` · DM: `#/messages`.
 
+Lokal `DATABASE_URL` mot `localhost` använder `pg`; Neon-URL i produktion använder `@neondatabase/serverless`.
+
 ### Tester
 
 ```bash
