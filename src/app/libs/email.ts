@@ -8,7 +8,7 @@ export async function sendEmail({
   html: string;
 }): Promise<{ sent: boolean }> {
   const apiKey = process.env.RESEND_API_KEY?.trim();
-  const from = process.env.EMAIL_FROM?.trim() || "Community Forum <onboarding@resend.dev>";
+  const from = process.env.EMAIL_FROM?.trim() || "Flödet <onboarding@resend.dev>";
 
   if (!apiKey) {
     return { sent: false };

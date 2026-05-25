@@ -59,10 +59,11 @@ a:hover { text-decoration: underline; }
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: var(--fb-blue);
+  background: linear-gradient(135deg, var(--fb-blue), #6a5acd);
   color: #fff;
-  font-size: 1.5rem;
+  font-size: 1.35rem;
   font-weight: 700;
+  line-height: 1;
 }
 
 .topnav-search { flex: 1; max-width: 280px; }

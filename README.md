@@ -1,4 +1,6 @@
-# Community Auth Forum
+# Flödet
+
+Socialt nätverk (tidigare *Community Auth Forum* / *nodejs-3rd-challenge-api*).
 
 Forum-liknande webbapp med användarprofiler, fem valbara avatarer, inloggning (JWT) och meddelandevägg. Byggd som vidareutveckling av utbildningsprojektet **nodejs-3rd-challenge-api** — all git-historik från start till idag finns kvar i detta repo.
 

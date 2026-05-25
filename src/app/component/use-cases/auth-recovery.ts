@@ -39,7 +39,7 @@ export function createAuthRecovery({
 
       const { sent } = await sendEmail({
         to: user.email,
-        subject: "Återställ lösenord – Community Auth Forum",
+        subject: "Återställ lösenord – Flödet",
         html: `
           <p>Hej ${user.name || user.username},</p>
           <p>Du bad om att återställa lösenordet. Klicka länken (giltig i 1 timme):</p>
@@ -79,10 +79,10 @@ export function createAuthRecovery({
 
       const { sent } = await sendEmail({
         to: user.email,
-        subject: "Ditt användarnamn – Community Auth Forum",
+        subject: "Ditt användarnamn – Flödet",
         html: `
           <p>Hej!</p>
-          <p>Du bad om en påminnelse om användarnamnet för Community Auth Forum.</p>
+          <p>Du bad om en påminnelse om användarnamnet på Flödet.</p>
           <p><strong>Användarnamn:</strong> @${user.username}</p>
           <p><a href="${siteBaseUrl()}/#/login">Logga in här</a></p>
         `,
