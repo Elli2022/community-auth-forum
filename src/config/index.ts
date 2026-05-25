@@ -2,6 +2,9 @@ const ERROR_MSG = {
   post: {
     NO_DATA: "no data to insert",
     EXISTING_USER: "user already exists",
+    EXISTING_EMAIL: "email already registered",
+    WALL_USER_NOT_FOUND: "username must be registered before posting",
+    WALL_MESSAGE_REQUIRED: "message is required",
     INVALID_EMAIL: "Provided email is invalid",
     INVALID_STRING: "Invalid string for ",
     MISSING_PARAMETER: "Needed parameter missing.",
