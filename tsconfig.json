@@ -1,23 +1,22 @@
 {
-	"compilerOptions": {
-		"allowJs": true,
-		"esModuleInterop": true,
-		"target": "es6",
-		"module": "commonjs",
-		"moduleResolution": "node",
-		"inlineSourceMap": true,
-		"outDir": "build",
-		"rootDir": "src",
-		"types": ["mocha", "node"]
-	},
-	"exclude": [
-		"nodemon.js",
-		"node_modules",
-		"build",
-		"src/app/public",
-		"setup-env.js",
-		"src/app/**/*.json",
-		"coverage",
-		"src/__test__/**./*.spec.ts"
-	]
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "lib": ["ES2022"],
+    "outDir": "build",
+    "rootDir": "src",
+    "strict": true,
+    "noImplicitAny": false,
+    "useUnknownInCatchVariables": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "sourceMap": true,
+    "types": ["node", "mocha"]
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "build"]
 }

@@ -6,57 +6,33 @@ export default function createLogger({ format, transports }) {
     return `${timestamp} ${level}: ${stack || message}`;
   });
 
-  const transportDevArray = [
-    new transports.Console({
-      level: "http",
-      format: combine(colorize(), logFormat),
-    }),
-    new transports.File({
-      filename: filePath + "/error.log",
-      handleExceptions: true,
-      maxsize: 5242880, //5MB
-      maxFiles: 5,
-      level: "error",
-      format: combine(json()),
-    }),
-    new transports.File({
-      filename: filePath + "/all.log",
-      handleExceptions: true,
-      maxsize: 5242880, //5MB
-      maxFiles: 5,
-      level: "http",
-      format: combine(json()),
-    }),
-  ];
+  const consoleTransport = new transports.Console({
+    level: "http",
+    format: combine(colorize(), logFormat),
+  });
 
-  const transportProdArray = [
-    new transports.Console({
-      level: "http",
-      format: combine(colorize(), logFormat),
-    }),
-    new transports.File({
-      filename: filePath + "/error.log",
-      handleExceptions: true,
-      maxsize: 5242880, //5MB
-      maxFiles: 5,
-      level: "error",
-      format: combine(json()),
-    }),
-    new transports.File({
-      filename: filePath + "/all.log",
-      handleExceptions: true,
-      maxsize: 5242880, //5MB
-      maxFiles: 5,
-      level: "http",
-      format: combine(json()),
-    }),
-  ];
+  const fileTransports = filePath
+    ? [
+        new transports.File({
+          filename: `${filePath}/error.log`,
+          handleExceptions: true,
+          maxsize: 5242880,
+          maxFiles: 5,
+          level: "error",
+          format: combine(json()),
+        }),
+        new transports.File({
+          filename: `${filePath}/all.log`,
+          handleExceptions: true,
+          maxsize: 5242880,
+          maxFiles: 5,
+          level: "http",
+          format: combine(json()),
+        }),
+      ]
+    : [];
 
-  return Object.freeze({ logger });
-
-  function logger() {
-    return process.env.NODE_ENV === "development"
-      ? transportDevArray
-      : transportProdArray;
-  }
+  return Object.freeze({
+    logger: () => [consoleTransport, ...fileTransports],
+  });
 }

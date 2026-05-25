@@ -1,7 +1,6 @@
 {
-    "watch": ["src"],
-    "ext": "ts",
-    "ignore": ["node_modules"],
-    "exec": "ts-node ./src/app/index.ts"
-  }
-  
+  "watch": ["src"],
+  "ext": "ts",
+  "ignore": ["node_modules", "build"],
+  "exec": "tsx src/app/index.ts"
+}

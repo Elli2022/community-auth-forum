@@ -1,46 +1,47 @@
-import express from "express";
+import type { Express, RequestHandler } from "express";
 
-interface ServerOptions {
-  json: typeof express.json;
-  urlencoded: typeof express.urlencoded;
-  app: express.Express;
-  handler: { routes: any[] }; // Justera denna typ beroende på dina behov.
-  cors: any;
-  compression: any;
-  helmet: any;
-  logger: any; // Eller den specifika typen för din logger.
+interface Route {
+  path: string;
+  method: "get" | "post" | "put" | "delete" | "patch";
+  component: RequestHandler;
 }
 
-export default function createServer(options: ServerOptions) {
-  return Object.freeze({ server });
+interface ServerOptions {
+  json: () => RequestHandler;
+  urlencoded: (options: { extended: boolean }) => RequestHandler;
+  app: Express;
+  handler: { routes: Route[] };
+  cors: typeof import("cors");
+  compression: typeof import("compression");
+  helmet: () => RequestHandler;
+  listen?: boolean;
+  hostname?: string;
+  port?: number;
+  logger?: { info: (message: string) => void };
+}
 
-  function server({ hostname = "localhost", port = 3000 }) {
-    // Tillför standardvärden
-    // const routes = handler.routes; // Eftersom detta inte används, kommenterar vi bort det.
+export default function configureApp(options: ServerOptions) {
+  options.app.use(options.helmet());
+  options.app.use(options.cors());
+  options.app.use(options.compression());
+  options.app.use(options.json());
+  options.app.use(options.urlencoded({ extended: true }));
 
-    options.app.use(options.helmet());
-    options.app.options("*", options.cors({ credentials: true, origin: true }));
-    options.app.use(options.cors());
-    options.app.use(options.compression());
-    options.app.use(options.json());
-    options.app.use(options.urlencoded({ extended: true }));
+  options.app.get("/health", (_req, res) => {
+    res.json({ status: "ok" });
+  });
 
-    options.app.get("/", (req, res) =>
-      res.json({
-        data: "jag är hungrig igen, vi har gått en promenad, snart ska jag hoppa in i duschen. orkar inte detta mer.",
-      })
-    );
-    options.app.post("/", (req, res) => res.json({ body: req.body }));
+  for (const route of options.handler.routes) {
+    options.app[route.method](route.path, route.component);
+  }
 
-    for (let route of options.handler.routes) {
-      options.app[route.method](route.path, route.component);
-    }
-
+  if (options.listen !== false && options.logger) {
+    const hostname = options.hostname ?? "127.0.0.1";
+    const port = options.port ?? 3000;
     options.app.listen(port, hostname, () => {
-      options.logger.info(
+      options.logger?.info(
         `[EXPRESS] Server running at http://${hostname}:${port}`
       );
-      return;
     });
   }
 }

@@ -1,7 +1,22 @@
-export default function makeInputObjectFactory({ md5, sanitize }) {
-  let localErrorMsgs = {};
+type SanitizeFn = (text: string) => string;
+type HashFn = (text: string) => string;
 
-  function inputObj({ params, errorMsgs }) {
+interface InputFactoryDeps {
+  hashPassword: HashFn;
+  sanitize: SanitizeFn;
+}
+
+export default function makeInputObjectFactory({
+  hashPassword,
+  sanitize,
+}: InputFactoryDeps) {
+  function inputObj({
+    params,
+    errorMsgs,
+  }: {
+    params: Record<string, unknown>;
+    errorMsgs: Record<string, string>;
+  }) {
     const {
       username,
       password,
@@ -23,85 +38,90 @@ export default function makeInputObjectFactory({ md5, sanitize }) {
     });
   }
 
-  function checkUsername({ username, errorMsgs }) {
-    checkRequiredParam({
-      param: username,
-      paramName: "username",
-      errorMsgs,
-    });
+  function checkUsername({
+    username,
+    errorMsgs,
+  }: {
+    username: unknown;
+    errorMsgs: Record<string, string>;
+  }) {
+    checkRequiredParam({ param: username, paramName: "username", errorMsgs });
 
-    if (!strValidator(username)) {
+    if (typeof username !== "string" || !strValidator(username)) {
       throw new Error(`${errorMsgs.INVALID_STRING}username`);
     }
 
-    username = sanitize(username);
-    return username;
+    return sanitize(username);
   }
 
-  function checkPassword({ password, errorMsgs }) {
-    checkRequiredParam({
-      param: password,
-      paramName: "password",
-      errorMsgs,
-    });
-    password = sanitize(password);
-    password = hash({ param: password });
-    return password;
+  function checkPassword({
+    password,
+    errorMsgs,
+  }: {
+    password: unknown;
+    errorMsgs: Record<string, string>;
+  }) {
+    checkRequiredParam({ param: password, paramName: "password", errorMsgs });
+    const sanitized = sanitize(String(password));
+    return hashPassword(sanitized);
   }
 
-  function checkEmail({ email, errorMsgs }) {
-    checkRequiredParam({
-      param: email,
-      paramName: "email",
-      errorMsgs,
-    });
+  function checkEmail({
+    email,
+    errorMsgs,
+  }: {
+    email: unknown;
+    errorMsgs: Record<string, string>;
+  }) {
+    checkRequiredParam({ param: email, paramName: "email", errorMsgs });
 
-    if (!emailValidator(email)) {
-      throw new Error(`${errorMsgs.INVALID_EMAIL}`);
+    if (typeof email !== "string" || !emailValidator(email)) {
+      throw new Error(errorMsgs.INVALID_EMAIL);
     }
 
-    email = sanitize(email);
-    return email;
+    return sanitize(email);
   }
 
-  function emailValidator(email: any) {
-    // Enkel regex för att validera e-post
-    let emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
+  function emailValidator(email: string) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   }
 
-  function checkName({ name, errorMsgs }) {
-    checkRequiredParam({
-      param: name,
-      paramName: "name",
-      errorMsgs,
-    });
+  function checkName({
+    name,
+    errorMsgs,
+  }: {
+    name: unknown;
+    errorMsgs: Record<string, string>;
+  }) {
+    checkRequiredParam({ param: name, paramName: "name", errorMsgs });
 
     if (typeof name !== "string" || name.trim() === "") {
       throw new Error(`${errorMsgs.INVALID_STRING}name`);
     }
 
-    name = sanitize(name);
-    return name;
+    return sanitize(name);
   }
 
-  function hash({ param }) {
-    return md5(param);
-  }
-
-  function checkRequiredParam({ param, paramName, errorMsgs }) {
-    if (!param || param === "")
+  function checkRequiredParam({
+    param,
+    paramName,
+    errorMsgs,
+  }: {
+    param: unknown;
+    paramName: string;
+    errorMsgs: Record<string, string>;
+  }) {
+    if (param === undefined || param === null || param === "") {
       throw new Error(`${errorMsgs.MISSING_PARAMETER}${paramName}`);
-    return;
+    }
   }
 
-  // validerar strängen: ska vara större än 4 karaktärer men mindre än 25 och får bara vara små bokstäver och siffror
-  function strValidator(str: any) {
+  function strValidator(str: string) {
     return (
       str.length > 4 &&
       str.length < 25 &&
-      str.match(/^[a-z0-9]+$/) && // Endast små bokstäver och siffror för hela strängen
-      str.split("")[0].match(/[a-z]/) // Startar med en liten bokstav
+      /^[a-z0-9]+$/.test(str) &&
+      /^[a-z]/.test(str)
     );
   }
 

@@ -53,6 +53,9 @@ This repository contains a Node.js project that demonstrates the implementation 
   - **libs/transports.ts**: Sets up different transports for logging in development and production environments.
 
 ### Development Setup
+
+Requires **Node.js 22+**.
+
 1. **Install Dependencies**:
    ```bash
    npm install
@@ -60,12 +63,29 @@ This repository contains a Node.js project that demonstrates the implementation 
 
 2. **Run the Application**:
    ```bash
-   npm start
+   npm run dev
    ```
 
-3. **Access the API**:
+3. **Build for production**:
+   ```bash
+   npm run build && npm start
+   ```
+
+4. **Run tests**:
+   ```bash
+   npm test
+   ```
+
+5. **Access the API**:
+   - Health: `http://127.0.0.1:3000/health`
    - Base URL: `http://127.0.0.1:3000/api/v1/`
    - Use appropriate HTTP methods (GET, POST) to interact with the endpoints.
+
+### Security
+
+- **sanitize-html** is pinned to `^2.17.4` (fixes CVE-2026-44990).
+- User input is sanitized with `allowedTags: []` before validation.
+- Passwords are hashed with **bcrypt** (replacing MD5).
 
 ### Detailed Implementation
 - **Controller (index.ts)**:
