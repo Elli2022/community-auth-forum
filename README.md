@@ -4,12 +4,12 @@ Forum-liknande webbapp med användarprofiler, fem valbara avatarer, inloggning (
 
 ## Funktioner
 
-- **Registrering** med avatar (1–5), bio och valfri e-post (unik)
-- **Inloggning** (`POST /api/v1/auth/login`) — JWT i 7 dagar
-- **Profiler** (`GET /api/v1/users/:username`) — egna inlägg på väggen
-- **Redigera egen profil** (`PATCH`) — avatar, bio, namn
-- **Radera eget konto** (`DELETE` + lösenord) — inte andras profiler
-- **Meddelandevägg** — forum-känsla, länkar till profiler
+- **Registrering** med förvald avatar (1–5) eller **egen uppladdad profilbild**
+- **Inloggning** (JWT) och **nyhetsflöde** (egna vänner + egna inlägg)
+- **Profiler** med omslagsfärg, bio, tidslinje och vänförfrågningar
+- **Inlägg** med text och bild, **gilla** och **kommentera**
+- **Vänner** — skicka/acceptera förfrågningar
+- **Radera eget konto** — inte andras profiler
 
 ## Stack
 
@@ -28,7 +28,12 @@ Forum-liknande webbapp med användarprofiler, fem valbara avatarer, inloggning (
 | GET | `/api/v1/users/:username` | Profil + inlägg |
 | PATCH | `/api/v1/users/:username` | Uppdatera egen profil (JWT) |
 | DELETE | `/api/v1/users/:username` | Radera eget konto (JWT) |
-| GET/POST | `/api/v1/wall` | Vägg |
+| GET | `/api/v1/feed` | Nyhetsflöde (vänner + du) |
+| GET/POST | `/api/v1/wall` | Vägg (POST kräver inloggning) |
+| POST | `/api/v1/posts/:id/like` | Gilla / ta bort gilla |
+| POST | `/api/v1/posts/:id/comments` | Kommentera |
+| GET | `/api/v1/users/:username/avatar` | Egen uppladdad profilbild |
+| GET/POST | `/api/v1/friends` | Vänner och förfrågningar |
 
 ## Lokalt
 
