@@ -7,6 +7,8 @@ export interface UserRecord {
   email: string | null;
   name: string | null;
   surname: string | null;
+  avatar_id: number;
+  bio: string | null;
   created_at: Date | string;
   modified_at: Date | string;
 }
@@ -17,7 +19,17 @@ export interface CreateUserInput {
   email?: string;
   name?: string;
   surname?: string;
+  avatar_id?: number;
+  bio?: string;
   created: string;
+  modified: string;
+}
+
+export interface UpdateUserInput {
+  avatar_id?: number;
+  bio?: string;
+  name?: string;
+  surname?: string;
   modified: string;
 }
 
@@ -35,13 +47,16 @@ export default function makeUsersRepository({
     findByUsername,
     findByEmail,
     create,
+    updateProfile,
+    deleteByUsername,
     truncateAll,
   });
 
   async function findAll(): Promise<UserRecord[]> {
     logger.info("[DB][USERS] findAll - START");
     const rows = await sql`
-      SELECT id, username, password_hash, email, name, surname, created_at, modified_at
+      SELECT id, username, password_hash, email, name, surname,
+             avatar_id, bio, created_at, modified_at
       FROM users
       ORDER BY id ASC
     `;
@@ -51,7 +66,8 @@ export default function makeUsersRepository({
 
   async function findByUsername(username: string): Promise<UserRecord | null> {
     const rows = await sql`
-      SELECT id, username, password_hash, email, name, surname, created_at, modified_at
+      SELECT id, username, password_hash, email, name, surname,
+             avatar_id, bio, created_at, modified_at
       FROM users
       WHERE username = ${username}
       LIMIT 1
@@ -61,7 +77,8 @@ export default function makeUsersRepository({
 
   async function findByEmail(email: string): Promise<UserRecord | null> {
     const rows = await sql`
-      SELECT id, username, password_hash, email, name, surname, created_at, modified_at
+      SELECT id, username, password_hash, email, name, surname,
+             avatar_id, bio, created_at, modified_at
       FROM users
       WHERE LOWER(email) = LOWER(${email})
       LIMIT 1
@@ -72,23 +89,52 @@ export default function makeUsersRepository({
   async function create(user: CreateUserInput): Promise<UserRecord> {
     logger.info(`[DB][USERS] create ${user.username} - START`);
     const rows = await sql`
-      INSERT INTO users (username, password_hash, email, name, surname, created_at, modified_at)
+      INSERT INTO users (
+        username, password_hash, email, name, surname,
+        avatar_id, bio, created_at, modified_at
+      )
       VALUES (
         ${user.username},
         ${user.password},
         ${user.email ?? null},
         ${user.name ?? null},
         ${user.surname ?? null},
+        ${user.avatar_id ?? 1},
+        ${user.bio ?? ""},
         ${user.created},
         ${user.modified}
       )
-      RETURNING id, username, password_hash, email, name, surname, created_at, modified_at
+      RETURNING id, username, password_hash, email, name, surname,
+                avatar_id, bio, created_at, modified_at
     `;
     logger.info(`[DB][USERS] create ${user.username} - DONE`);
     return rows[0] as UserRecord;
   }
 
+  async function updateProfile(
+    username: string,
+    data: UpdateUserInput
+  ): Promise<UserRecord> {
+    const rows = await sql`
+      UPDATE users
+      SET
+        avatar_id = COALESCE(${data.avatar_id ?? null}, avatar_id),
+        bio = COALESCE(${data.bio ?? null}, bio),
+        name = COALESCE(${data.name ?? null}, name),
+        surname = COALESCE(${data.surname ?? null}, surname),
+        modified_at = ${data.modified}
+      WHERE username = ${username}
+      RETURNING id, username, password_hash, email, name, surname,
+                avatar_id, bio, created_at, modified_at
+    `;
+    return rows[0] as UserRecord;
+  }
+
+  async function deleteByUsername(username: string): Promise<void> {
+    await sql`DELETE FROM users WHERE username = ${username}`;
+  }
+
   async function truncateAll(): Promise<void> {
-    await sql`TRUNCATE TABLE users RESTART IDENTITY`;
+    await sql`TRUNCATE TABLE users RESTART IDENTITY CASCADE`;
   }
 }

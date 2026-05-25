@@ -3,7 +3,7 @@ import type { Express, RequestHandler } from "express";
 interface Route {
   path: string;
   method: "get" | "post" | "put" | "delete" | "patch";
-  component: RequestHandler;
+  component: RequestHandler | RequestHandler[];
 }
 
 interface ServerOptions {
@@ -32,7 +32,10 @@ export default function configureApp(options: ServerOptions) {
   });
 
   for (const route of options.handler.routes) {
-    options.app[route.method](route.path, route.component);
+    const handlers = Array.isArray(route.component)
+      ? route.component
+      : [route.component];
+    options.app[route.method](route.path, ...handlers);
   }
 
   if (options.listen !== false && options.logger) {

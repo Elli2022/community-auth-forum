@@ -16,7 +16,7 @@ export default function makeWallRepository({
   sql: SqlClient;
   logger: Logger;
 }) {
-  return Object.freeze({ findAll, create });
+  return Object.freeze({ findAll, findByUsername, create });
 
   async function findAll(): Promise<WallPostRecord[]> {
     logger.info("[DB][WALL] findAll - START");
@@ -27,6 +27,17 @@ export default function makeWallRepository({
       LIMIT 100
     `;
     logger.info("[DB][WALL] findAll - DONE");
+    return rows as WallPostRecord[];
+  }
+
+  async function findByUsername(username: string): Promise<WallPostRecord[]> {
+    const rows = await sql`
+      SELECT id, username, message, created_at
+      FROM wall_posts
+      WHERE username = ${username}
+      ORDER BY created_at DESC
+      LIMIT 50
+    `;
     return rows as WallPostRecord[];
   }
 

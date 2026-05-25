@@ -15,6 +15,8 @@ export function mapUserToResponse(
 
   const user: Record<string, unknown> = {
     username: row.username,
+    avatar_id: row.avatar_id ?? 1,
+    bio: row.bio ?? "",
     created: transformDate(created),
     modified: transformDate(modified),
   };

@@ -1,7 +1,19 @@
+import sanitizeHtml from "sanitize-html";
 import { mapUserToResponse } from "../../db/map-user";
 import type makeUsersRepository from "../../db/users-repository";
 
 type UsersRepository = ReturnType<typeof makeUsersRepository>;
+
+const sanitize = (text: string) =>
+  sanitizeHtml(text, { allowedTags: [], allowedAttributes: {} });
+
+function parseAvatarId(value: unknown): number {
+  const n = Number(value ?? 1);
+  if (!Number.isInteger(n) || n < 1 || n > 5) {
+    throw new Error("avatar_id must be between 1 and 5");
+  }
+  return n;
+}
 
 export default function createPost({
   makeInputObj,
@@ -41,6 +53,11 @@ export default function createPost({
       }
 
       const userFactory = makeInputObj({ params });
+      const avatar_id = parseAvatarId(params.avatar_id);
+      const bio =
+        typeof params.bio === "string"
+          ? sanitize(params.bio).slice(0, 280)
+          : "";
 
       const createdMs = Number(userFactory.created());
       const modifiedMs = Number(userFactory.modified());
@@ -48,11 +65,15 @@ export default function createPost({
       const userInput = {
         username: userFactory.username(),
         password: userFactory.password(),
+        avatar_id,
+        bio,
         created: new Date(createdMs).toISOString(),
         modified: new Date(modifiedMs).toISOString(),
       } as {
         username: string;
         password: string;
+        avatar_id: number;
+        bio: string;
         created: string;
         modified: string;
         email?: string;

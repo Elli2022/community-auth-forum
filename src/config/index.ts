@@ -8,6 +8,7 @@ const ERROR_MSG = {
     INVALID_EMAIL: "Provided email is invalid",
     INVALID_STRING: "Invalid string for ",
     MISSING_PARAMETER: "Needed parameter missing.",
+    INVALID_CREDENTIALS: "Invalid credentials",
   },
 };
 
@@ -18,7 +19,7 @@ const TEST_DATA = {
 };
 
 export default Object.freeze({
-  APP_NAME: process.env.NODE_NAME ?? "authentication-ms",
+  APP_NAME: process.env.NODE_NAME ?? "community-auth-forum",
   ERROR_MSG,
   NODE_ENV: process.env.NODE_ENV ?? "development",
   NODE_HOSTNAME: process.env.NODE_HOSTNAME ?? "127.0.0.1",

@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Hantera användare – registrera, lista och validera via Authentication microservice."
+      content="Community Auth Forum – registrera, logga in, profiler och meddelandevägg."
     />
-    <title>Användarhantering | Authentication MS</title>
+    <title>Community Auth Forum</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -20,38 +20,65 @@
     <div class="bg-pattern" aria-hidden="true"></div>
 
     <header class="site-header">
-      <div class="brand">
+      <a href="#/" class="brand brand-link">
         <span class="brand-icon" aria-hidden="true">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
             <path
-              d="M12 2C9.24 2 7 4.24 7 7v2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-2V7c0-2.76-2.24-5-5-5Zm0 2a3 3 0 0 1 3 3v2H9V7a3 3 0 0 1 3-3Z"
+              d="M16 11c1.66 0 3-1.34 3-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3Zm-8 0c1.66 0 3-1.34 3-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3Zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13Zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5Z"
               fill="currentColor"
             />
           </svg>
         </span>
         <div>
-          <h1>Användarhantering</h1>
-          <p class="brand-sub">NodeJS 3rd Challenge · Authentication microservice</p>
+          <h1>Community Auth Forum</h1>
+          <p class="brand-sub">Forum med profiler · sedan nodejs-3rd-challenge-api</p>
         </div>
-      </div>
+      </a>
       <div class="header-actions">
         <span id="health-badge" class="health-badge" role="status">Kontrollerar…</span>
-        <button type="button" id="btn-refresh" class="btn btn-ghost">
-          Uppdatera lista
+        <div id="session-bar" class="session-bar" hidden>
+          <a id="session-profile-link" href="#" class="session-user"></a>
+          <button type="button" id="btn-logout" class="btn btn-ghost btn-sm">Logga ut</button>
+        </div>
+        <form id="login-form" class="login-form" novalidate>
+          <input
+            id="login-username"
+            name="username"
+            type="text"
+            placeholder="Användarnamn"
+            autocomplete="username"
+          />
+          <input
+            id="login-password"
+            name="password"
+            type="password"
+            placeholder="Lösenord"
+            autocomplete="current-password"
+          />
+          <button type="submit" class="btn btn-primary btn-sm">Logga in</button>
+        </form>
+        <button type="button" id="btn-refresh" class="btn btn-ghost btn-sm">
+          Uppdatera
         </button>
       </div>
     </header>
 
-    <main class="layout layout-with-wall">
+    <main id="view-home" class="layout layout-with-wall">
       <section class="card card-form" aria-labelledby="form-title">
         <div class="card-head">
-          <h2 id="form-title">Registrera användare</h2>
+          <h2 id="form-title">Registrera konto</h2>
           <p class="card-desc">
-            Skapa ett konto med validering och säker lagring (bcrypt + HTML-sanering).
+            Välj avatar, skapa konto och börja posta på väggen.
           </p>
         </div>
 
         <form id="register-form" novalidate>
+          <fieldset class="avatar-picker">
+            <legend>Välj avatar</legend>
+            <div class="avatar-options" id="avatar-options"></div>
+            <input type="hidden" name="avatar_id" id="avatar_id" value="1" />
+          </fieldset>
+
           <div class="field-row">
             <div class="field">
               <label for="username">Användarnamn <span class="req">*</span></label>
@@ -63,7 +90,7 @@
                 placeholder="t.ex. ellie01"
                 required
               />
-              <span class="hint">5–24 tecken, små bokstäver och siffror, börjar med bokstav</span>
+              <span class="hint">5–24 tecken, små bokstäver och siffror</span>
               <span class="field-error" data-for="username"></span>
             </div>
             <div class="field">
@@ -73,7 +100,6 @@
                 name="password"
                 type="password"
                 autocomplete="new-password"
-                placeholder="••••••••"
                 required
               />
               <span class="field-error" data-for="password"></span>
@@ -81,15 +107,14 @@
           </div>
 
           <div class="field">
+            <label for="bio">Om mig</label>
+            <textarea id="bio" name="bio" rows="2" maxlength="280" placeholder="Kort presentation…"></textarea>
+          </div>
+
+          <div class="field">
             <label for="email">E-post</label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              autocomplete="email"
-              placeholder="namn@exempel.se"
-            />
-            <span class="hint">Valfritt – måste vara unik om den anges</span>
+            <input id="email" name="email" type="email" autocomplete="email" />
+            <span class="hint">Valfritt – måste vara unik</span>
             <span class="field-error" data-for="email"></span>
           </div>
 
@@ -97,97 +122,125 @@
             <div class="field">
               <label for="name">Förnamn</label>
               <input id="name" name="name" type="text" autocomplete="given-name" />
-              <span class="field-error" data-for="name"></span>
             </div>
             <div class="field">
               <label for="surname">Efternamn</label>
               <input id="surname" name="surname" type="text" autocomplete="family-name" />
-              <span class="field-error" data-for="surname"></span>
             </div>
           </div>
 
           <div class="form-actions">
             <button type="submit" class="btn btn-primary" id="btn-submit">
-              <span class="btn-label">Skapa användare</span>
+              <span class="btn-label">Skapa konto</span>
               <span class="btn-spinner" hidden aria-hidden="true"></span>
             </button>
-            <button type="reset" class="btn btn-ghost">Rensa formulär</button>
+            <button type="reset" class="btn btn-ghost">Rensa</button>
           </div>
         </form>
       </section>
 
       <section class="card card-list" aria-labelledby="list-title">
         <div class="card-head">
-          <h2 id="list-title">Registrerade användare</h2>
+          <h2 id="list-title">Medlemmar</h2>
           <p class="card-desc">
-            <span id="user-count">0</span> användare · lösenord visas aldrig i listan
+            <span id="user-count">0</span> medlemmar · klicka för profil
           </p>
         </div>
-
         <div class="list-body">
           <div id="list-loading" class="list-state">
             <div class="spinner" aria-hidden="true"></div>
-            <p>Hämtar användare…</p>
+            <p>Hämtar medlemmar…</p>
           </div>
-
           <div id="list-empty" class="list-state" hidden>
-            <div class="empty-icon" aria-hidden="true">👤</div>
-            <p>Inga användare ännu</p>
-            <p class="muted">Registrera den första med formuläret till vänster.</p>
+            <p>Inga medlemmar ännu</p>
           </div>
-
           <ul id="user-list" class="user-list" hidden></ul>
         </div>
       </section>
 
       <section class="card card-wall" aria-labelledby="wall-title">
         <div class="card-head">
-          <h2 id="wall-title">Meddelandevägg</h2>
-          <p class="card-desc">
-            Skriv ett inlägg som registrerad användare. Max 500 tecken.
-          </p>
+          <h2 id="wall-title">Väggen</h2>
+          <p class="card-desc">Dela med dig – som på ett forum</p>
         </div>
-
         <form id="wall-form" class="wall-form" novalidate>
-          <div class="field-row">
-            <div class="field">
-              <label for="wall-username">Användarnamn <span class="req">*</span></label>
-              <input
-                id="wall-username"
-                name="username"
-                type="text"
-                placeholder="ditt registrerade namn"
-                required
-              />
-            </div>
-            <div class="field wall-message-field">
-              <label for="wall-message">Meddelande <span class="req">*</span></label>
-              <textarea
-                id="wall-message"
-                name="message"
-                rows="3"
-                maxlength="500"
-                placeholder="Vad vill du dela?"
-                required
-              ></textarea>
-              <span class="hint"><span id="wall-chars">0</span>/500 tecken</span>
-            </div>
+          <div class="field wall-message-field">
+            <label for="wall-message">Meddelande <span class="req">*</span></label>
+            <textarea
+              id="wall-message"
+              name="message"
+              rows="3"
+              maxlength="500"
+              placeholder="Vad vill du dela?"
+              required
+            ></textarea>
+            <span class="hint"><span id="wall-chars">0</span>/500 · logga in för att posta</span>
           </div>
           <div class="form-actions">
-            <button type="submit" class="btn btn-primary">Publicera på väggen</button>
+            <button type="submit" class="btn btn-primary">Publicera</button>
           </div>
         </form>
-
         <div id="wall-loading" class="list-state wall-list-state" hidden>
           <div class="spinner" aria-hidden="true"></div>
-          <p>Hämtar inlägg…</p>
         </div>
-
         <div id="wall-empty" class="list-state wall-list-state" hidden>
-          <p>Inga inlägg ännu — bli först att skriva!</p>
+          <p>Inga inlägg ännu</p>
         </div>
-
         <ul id="wall-list" class="wall-list" hidden></ul>
+      </section>
+    </main>
+
+    <main id="view-profile" class="profile-view" hidden>
+      <section class="card profile-card">
+        <a href="#/" class="back-link">← Tillbaka till forumet</a>
+        <div id="profile-loading" class="list-state">
+          <div class="spinner" aria-hidden="true"></div>
+          <p>Laddar profil…</p>
+        </div>
+        <div id="profile-content" hidden>
+          <header class="profile-header">
+            <img id="profile-avatar" class="profile-avatar-img" src="" alt="" width="96" height="96" />
+            <div>
+              <h2 id="profile-display-name"></h2>
+              <p class="profile-username" id="profile-username"></p>
+              <p id="profile-bio" class="profile-bio"></p>
+              <p id="profile-meta" class="muted"></p>
+            </div>
+          </header>
+          <div id="profile-edit" class="profile-edit" hidden>
+            <h3>Redigera din profil</h3>
+            <fieldset class="avatar-picker">
+              <legend>Byt avatar</legend>
+              <div class="avatar-options" id="profile-avatar-options"></div>
+            </fieldset>
+            <div class="field">
+              <label for="edit-bio">Om mig</label>
+              <textarea id="edit-bio" rows="3" maxlength="280"></textarea>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="edit-name">Förnamn</label>
+                <input id="edit-name" type="text" />
+              </div>
+              <div class="field">
+                <label for="edit-surname">Efternamn</label>
+                <input id="edit-surname" type="text" />
+              </div>
+            </div>
+            <button type="button" id="btn-save-profile" class="btn btn-primary">Spara ändringar</button>
+            <hr class="profile-divider" />
+            <h3>Radera konto</h3>
+            <p class="muted">Endast du kan radera din egen profil. Inlägg tas bort.</p>
+            <div class="field-row delete-row">
+              <input id="delete-password" type="password" placeholder="Bekräfta med lösenord" />
+              <button type="button" id="btn-delete-profile" class="btn btn-danger">Radera mitt konto</button>
+            </div>
+          </div>
+          <h3>Inlägg på väggen</h3>
+          <ul id="profile-posts" class="wall-list"></ul>
+          <p id="profile-posts-empty" class="muted" hidden>Inga inlägg ännu.</p>
+        </div>
+        <p id="profile-not-found" class="muted" hidden>Användaren finns inte.</p>
       </section>
     </main>
 
@@ -196,12 +249,13 @@
         API:
         <code>GET/POST /api/v1/</code>
         ·
+        <code>POST /api/v1/auth/login</code>
+        ·
         <a href="/health" target="_blank" rel="noopener">/health</a>
       </p>
     </footer>
 
     <div id="toast-root" class="toast-root" aria-live="polite" aria-atomic="true"></div>
-
     <script src="/app.js" type="module"></script>
   </body>
 </html>
