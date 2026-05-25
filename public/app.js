@@ -91,6 +91,14 @@ function readFileAsDataUrl(file) {
 function parseRoute() {
   const h = location.hash.slice(1) || "/";
   if (h === "/register") return { view: "register" };
+  if (h === "/login") return { view: "auth", auth: "login" };
+  if (h === "/forgot-password") return { view: "auth", auth: "forgot-password" };
+  if (h === "/forgot-username") return { view: "auth", auth: "forgot-username" };
+  const reset = h.match(/^\/reset-password/);
+  if (reset) {
+    const token = new URLSearchParams(location.hash.split("?")[1] || "").get("token");
+    return { view: "auth", auth: "reset-password", token };
+  }
   const prof = h.match(/^\/profile\/([^/]+)/);
   if (prof) return { view: "profile", username: decodeURIComponent(prof[1]) };
   const msg = h.match(/^\/messages\/?([^/]*)/);
@@ -98,23 +106,47 @@ function parseRoute() {
   return { view: "home" };
 }
 
+function showAuthPanel(panel) {
+  $("#auth-login-panel").hidden = panel !== "login";
+  $("#auth-forgot-password-panel").hidden = panel !== "forgot-password";
+  $("#auth-forgot-username-panel").hidden = panel !== "forgot-username";
+  $("#auth-reset-password-panel").hidden = panel !== "reset-password";
+}
+
 function showView(route) {
+  const isAuth = route.view === "auth";
   $("#view-home").hidden = route.view !== "home";
   $("#view-register").hidden = route.view !== "register";
   $("#view-profile").hidden = route.view !== "profile";
   $("#view-messages").hidden = route.view !== "messages";
+  $("#view-auth").hidden = !isAuth;
   $("#notif-panel").hidden = true;
+  document.body.classList.toggle("auth-page", isAuth || route.view === "register");
 
   if (route.view === "home") {
     loadFeed();
     loadSidebar();
   } else if (route.view === "register") {
     initRegisterAvatars();
+  } else if (route.view === "auth") {
+    showAuthPanel(route.auth || "login");
+    if (route.auth === "reset-password" && route.token) {
+      $("#reset-token").value = route.token;
+    }
   } else if (route.view === "profile") {
     loadProfile(route.username);
   } else if (route.view === "messages") {
     loadMessagesView(route.username);
   }
+}
+
+function switchProfileTab(tab) {
+  $$(".profile-tab").forEach((b) => {
+    b.classList.toggle("active", b.dataset.tab === tab);
+  });
+  $("#tab-posts").hidden = tab !== "posts";
+  $("#tab-about").hidden = tab !== "about";
+  $("#tab-settings").hidden = tab !== "settings";
 }
 
 function syncNav() {
@@ -129,6 +161,7 @@ function syncNav() {
   $("#notif-wrap").hidden = !logged;
   $("#nav-messages").hidden = !logged;
   $("#sidebar-messages").hidden = !logged;
+  $("#nav-login-link").hidden = logged;
 
   if (logged) {
     const u = s.user;
@@ -459,15 +492,18 @@ async function loadProfile(username) {
     avatar.src = avatarSrc(data);
     $("#profile-name").textContent = displayName(data);
     $("#profile-handle").textContent = `@${data.username}`;
-    $("#profile-bio").textContent = data.bio || "Ingen presentation.";
+    const bioText = data.bio || "Ingen presentation ännu.";
+    $("#profile-bio").textContent = bioText;
+    $("#profile-about-text").textContent = bioText;
 
     const actions = $("#profile-actions");
     actions.innerHTML = "";
     const s = getSession();
 
     if (data.isOwner) {
-      $("#profile-edit").hidden = false;
+      $("#tab-btn-settings").hidden = false;
       $("#profile-upload-label").hidden = false;
+      switchProfileTab("posts");
       $("#edit-bio").value = data.bio || "";
       $("#edit-name").value = data.name || "";
       $("#edit-surname").value = data.surname || "";
@@ -476,8 +512,9 @@ async function loadProfile(username) {
         registerAvatarId = id;
       });
     } else {
-      $("#profile-edit").hidden = true;
+      $("#tab-btn-settings").hidden = true;
       $("#profile-upload-label").hidden = true;
+      switchProfileTab("posts");
       if (s?.user && data.friend_status === "none") {
         const b = document.createElement("button");
         b.className = "btn btn-fb";
@@ -543,6 +580,10 @@ async function saveProfile(username) {
   }
 }
 
+$$(".profile-tab").forEach((btn) => {
+  btn.addEventListener("click", () => switchProfileTab(btn.dataset.tab));
+});
+
 $("#login-form")?.addEventListener("submit", async (e) => {
   e.preventDefault();
   const fd = new FormData(e.target);
@@ -550,7 +591,7 @@ $("#login-form")?.addEventListener("submit", async (e) => {
     const { data } = await api("/api/v1/auth/login", {
       method: "POST",
       body: JSON.stringify({
-        username: fd.get("username")?.trim(),
+        username: String(fd.get("username") || "").trim().toLowerCase(),
         password: fd.get("password"),
       }),
     });
@@ -559,7 +600,68 @@ $("#login-form")?.addEventListener("submit", async (e) => {
     toast(`Välkommen, ${displayName(data.user)}!`);
     location.hash = "#/";
   } catch (err) {
-    toast(err.message, "error");
+    toast(translateApiError(err.message), "error");
+  }
+});
+
+$("#forgot-password-form")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = new FormData(e.target).get("email");
+  const resultEl = $("#forgot-password-result");
+  try {
+    const { data } = await api("/api/v1/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    });
+    resultEl.hidden = false;
+    let html = `<p>${escapeHtml(data.message)}</p>`;
+    if (data.dev_reset_url) {
+      html += `<p><strong>Återställningslänk:</strong><br><a href="${escapeHtml(data.dev_reset_url)}">${escapeHtml(data.dev_reset_url)}</a></p>`;
+    }
+    resultEl.innerHTML = html;
+  } catch (err) {
+    toast(translateApiError(err.message), "error");
+  }
+});
+
+$("#forgot-username-form")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = new FormData(e.target).get("email");
+  const resultEl = $("#forgot-username-result");
+  try {
+    const { data } = await api("/api/v1/auth/forgot-username", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    });
+    resultEl.hidden = false;
+    let html = `<p>${escapeHtml(data.message)}</p>`;
+    if (data.dev_username) {
+      html += `<p><strong>Ditt användarnamn:</strong> @${escapeHtml(data.dev_username)}</p>`;
+    }
+    resultEl.innerHTML = html;
+  } catch (err) {
+    toast(translateApiError(err.message), "error");
+  }
+});
+
+$("#reset-password-form")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  if (fd.get("password") !== fd.get("password2")) {
+    return toast("Lösenorden matchar inte.", "error");
+  }
+  try {
+    const { data } = await api("/api/v1/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({
+        token: fd.get("token") || $("#reset-token").value,
+        password: fd.get("password"),
+      }),
+    });
+    toast(data.message);
+    location.hash = "#/login";
+  } catch (err) {
+    toast(translateApiError(err.message), "error");
   }
 });
 

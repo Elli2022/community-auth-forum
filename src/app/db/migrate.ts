@@ -93,6 +93,17 @@ CREATE TABLE IF NOT EXISTS direct_messages (
 );
 
 CREATE INDEX IF NOT EXISTS idx_messages_thread ON direct_messages (sender, recipient, created_at ASC);
+
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+  id SERIAL PRIMARY KEY,
+  username VARCHAR(24) NOT NULL REFERENCES users(username) ON DELETE CASCADE,
+  token VARCHAR(128) NOT NULL UNIQUE,
+  expires_at TIMESTAMPTZ NOT NULL,
+  used_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_reset_tokens_token ON password_reset_tokens (token);
 `;
 
 const MIGRATION_LOCK_ID = 8815227;

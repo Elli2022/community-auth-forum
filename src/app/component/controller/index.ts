@@ -10,6 +10,7 @@ import {
   getWall,
   postWall,
   login,
+  authRecovery,
   getProfile,
   updateProfile,
   deleteProfile,
@@ -93,6 +94,33 @@ const postEP = async (req: AuthedRequest, res: Response) => {
           ? "E-postadressen är redan registrerad."
           : msg;
     res.status(400).json({ err: 1, message: friendly });
+  }
+};
+
+const forgotPasswordEP = async (req: AuthedRequest, res: Response) => {
+  try {
+    const results = await authRecovery.forgotPassword(req.body);
+    res.json({ err: 0, data: results });
+  } catch (err) {
+    res.status(400).json({ err: 1, message: errorMessage(err) });
+  }
+};
+
+const forgotUsernameEP = async (req: AuthedRequest, res: Response) => {
+  try {
+    const results = await authRecovery.forgotUsername(req.body);
+    res.json({ err: 0, data: results });
+  } catch (err) {
+    res.status(400).json({ err: 1, message: errorMessage(err) });
+  }
+};
+
+const resetPasswordEP = async (req: AuthedRequest, res: Response) => {
+  try {
+    const results = await authRecovery.resetPassword(req.body);
+    res.json({ err: 0, data: results });
+  } catch (err) {
+    res.status(400).json({ err: 1, message: errorMessage(err) });
   }
 };
 
@@ -328,6 +356,21 @@ const postMessageEP = async (req: AuthedRequest, res: Response) => {
 
 const routes = [
   { path: `${baseUrl}/auth/login`, method: "post" as const, component: loginEP },
+  {
+    path: `${baseUrl}/auth/forgot-password`,
+    method: "post" as const,
+    component: forgotPasswordEP,
+  },
+  {
+    path: `${baseUrl}/auth/forgot-username`,
+    method: "post" as const,
+    component: forgotUsernameEP,
+  },
+  {
+    path: `${baseUrl}/auth/reset-password`,
+    method: "post" as const,
+    component: resetPasswordEP,
+  },
   { path: `${baseUrl}/feed`, method: "get" as const, component: [optionalAuth, getFeedEP] },
   { path: `${baseUrl}/friends`, method: "get" as const, component: [requireAuth, getFriendsEP] },
   {

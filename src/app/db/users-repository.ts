@@ -57,6 +57,7 @@ export default function makeUsersRepository({
     findByEmail,
     create,
     updateProfile,
+    updatePassword,
     getAvatarImage,
     deleteByUsername,
     truncateAll,
@@ -172,6 +173,14 @@ export default function makeUsersRepository({
                 created_at, modified_at
     `;
     return rows[0] as UserRecord;
+  }
+
+  async function updatePassword(username: string, password_hash: string): Promise<void> {
+    await sql`
+      UPDATE users
+      SET password_hash = ${password_hash}, modified_at = NOW()
+      WHERE username = ${username}
+    `;
   }
 
   async function getAvatarImage(username: string): Promise<string | null> {

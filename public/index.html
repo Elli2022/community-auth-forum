@@ -7,7 +7,7 @@
     <title>Community Auth Forum</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
@@ -34,11 +34,7 @@
           </a>
           <button type="button" id="btn-logout" class="btn-text">Logga ut</button>
         </div>
-        <form id="login-form" class="login-inline" novalidate>
-          <input name="username" type="text" placeholder="Användarnamn" autocomplete="username" />
-          <input name="password" type="password" placeholder="Lösenord" autocomplete="current-password" />
-          <button type="submit" class="btn btn-fb">Logga in</button>
-        </form>
+        <a href="#/login" id="nav-login-link" class="btn btn-fb btn-sm">Logga in</a>
       </div>
     </nav>
 
@@ -73,8 +69,12 @@
         </section>
 
         <section id="guest-banner" class="guest-banner card">
-          <h2>Välkommen till Community Auth Forum</h2>
-          <p>Logga in eller <a href="#/register">skapa konto</a> för att posta, gilla och bli vänner.</p>
+          <h2>Välkommen till Community</h2>
+          <p class="guest-lead">Ditt forum för vänner, inlägg och meddelanden.</p>
+          <div class="guest-actions">
+            <a href="#/login" class="btn btn-fb">Logga in</a>
+            <a href="#/register" class="btn btn-secondary">Skapa konto</a>
+          </div>
         </section>
 
         <div id="feed-loading" class="feed-state">Laddar flöde…</div>
@@ -121,12 +121,15 @@
             <label>Lösenord *<input name="password" type="password" required /></label>
             <label>Förnamn<input name="name" /></label>
             <label>Efternamn<input name="surname" /></label>
-            <label class="span-2">E-post<input name="email" type="email" /></label>
+            <label class="span-2">E-post (rekommenderas för återställning)
+              <input name="email" type="email" placeholder="namn@exempel.se" />
+              <span class="field-hint">Behövs om du glömmer lösenord eller användarnamn</span>
+            </label>
             <label class="span-2">Om mig<textarea name="bio" rows="2" maxlength="280"></textarea></label>
           </div>
           <p class="field-error" id="register-error"></p>
           <button type="submit" class="btn btn-fb btn-block">Registrera</button>
-          <p class="muted center"><a href="#/">Har du konto? Logga in</a></p>
+          <p class="muted center"><a href="#/login">Har du konto? Logga in</a></p>
         </form>
       </div>
     </div>
@@ -148,42 +151,112 @@
       </div>
     </div>
 
+    <div id="view-auth" class="view-auth" hidden>
+      <div class="auth-card card">
+        <div id="auth-login-panel">
+          <h1>Logga in</h1>
+          <p class="muted">Välkommen tillbaka</p>
+          <form id="login-form" class="auth-form" novalidate>
+            <label>Användarnamn<input name="username" autocomplete="username" required /></label>
+            <label>Lösenord<input name="password" type="password" autocomplete="current-password" required /></label>
+            <button type="submit" class="btn btn-fb btn-block">Logga in</button>
+          </form>
+          <p class="auth-links">
+            <a href="#/forgot-password">Glömt lösenord?</a>
+            ·
+            <a href="#/forgot-username">Glömt användarnamn?</a>
+          </p>
+          <p class="muted center">Inget konto? <a href="#/register">Registrera dig</a></p>
+        </div>
+        <div id="auth-forgot-password-panel" hidden>
+          <h1>Återställ lösenord</h1>
+          <p class="muted">Ange e-postadressen du registrerade med.</p>
+          <form id="forgot-password-form" class="auth-form" novalidate>
+            <label>E-post<input name="email" type="email" required autocomplete="email" /></label>
+            <button type="submit" class="btn btn-fb btn-block">Skicka återställningslänk</button>
+          </form>
+          <div id="forgot-password-result" class="auth-result" hidden></div>
+          <p class="center"><a href="#/login">← Tillbaka till inloggning</a></p>
+        </div>
+        <div id="auth-forgot-username-panel" hidden>
+          <h1>Glömt användarnamn?</h1>
+          <p class="muted">Vi skickar ditt användarnamn till din registrerade e-post.</p>
+          <form id="forgot-username-form" class="auth-form" novalidate>
+            <label>E-post<input name="email" type="email" required autocomplete="email" /></label>
+            <button type="submit" class="btn btn-fb btn-block">Skicka användarnamn</button>
+          </form>
+          <div id="forgot-username-result" class="auth-result" hidden></div>
+          <p class="center"><a href="#/login">← Tillbaka till inloggning</a></p>
+        </div>
+        <div id="auth-reset-password-panel" hidden>
+          <h1>Nytt lösenord</h1>
+          <form id="reset-password-form" class="auth-form" novalidate>
+            <input type="hidden" id="reset-token" name="token" />
+            <label>Nytt lösenord<input name="password" type="password" minlength="6" required autocomplete="new-password" /></label>
+            <label>Bekräfta lösenord<input name="password2" type="password" minlength="6" required autocomplete="new-password" /></label>
+            <button type="submit" class="btn btn-fb btn-block">Spara nytt lösenord</button>
+          </form>
+          <p class="center"><a href="#/login">Gå till inloggning</a></p>
+        </div>
+      </div>
+    </div>
+
     <div id="view-profile" class="view-profile" hidden>
-      <div id="profile-cover" class="profile-cover"></div>
-      <div class="profile-shell card">
-        <div class="profile-top">
+      <div class="profile-hero">
+        <div id="profile-cover" class="profile-cover"></div>
+        <div class="profile-hero-inner">
           <div class="profile-avatar-wrap">
             <img id="profile-avatar" class="avatar-xl" src="/avatars/1.svg" alt="" />
-            <label id="profile-upload-label" class="avatar-upload-btn" hidden>
-              📷
+            <label id="profile-upload-label" class="avatar-upload-btn" hidden title="Byt profilbild">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z"/><path d="M9 2 7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9Zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5Z"/></svg>
               <input type="file" id="profile-upload" accept="image/jpeg,image/png,image/webp" hidden />
             </label>
           </div>
           <div class="profile-info">
             <h1 id="profile-name"></h1>
-            <p id="profile-handle" class="muted"></p>
-            <p id="profile-bio"></p>
+            <p id="profile-handle" class="profile-handle"></p>
+            <p id="profile-bio" class="profile-bio-text"></p>
             <div id="profile-actions" class="profile-actions"></div>
           </div>
         </div>
-        <div id="profile-edit" class="profile-edit" hidden>
-          <h3>Redigera profil</h3>
-          <div id="edit-avatars" class="avatar-options"></div>
-          <label class="upload-label">📤 Byt profilbild<input type="file" id="edit-upload" accept="image/jpeg,image/png,image/webp" hidden /></label>
-          <label>Om mig<textarea id="edit-bio" rows="2" maxlength="280"></textarea></label>
-          <div class="field-grid">
-            <label>Förnamn<input id="edit-name" /></label>
-            <label>Efternamn<input id="edit-surname" /></label>
-          </div>
-          <label>Omslagsfärg<input type="color" id="edit-cover" value="#1877f2" /></label>
-          <button type="button" id="btn-save-profile" class="btn btn-fb">Spara</button>
-          <hr />
-          <h3>Radera konto</h3>
-          <input id="delete-password" type="password" placeholder="Lösenord" />
-          <button type="button" id="btn-delete-profile" class="btn btn-danger">Radera mitt konto</button>
+      </div>
+      <div class="profile-body card">
+        <nav class="profile-tabs" role="tablist">
+          <button type="button" class="profile-tab active" data-tab="posts">Inlägg</button>
+          <button type="button" class="profile-tab" data-tab="about">Om</button>
+          <button type="button" class="profile-tab" data-tab="settings" id="tab-btn-settings" hidden>Inställningar</button>
+        </nav>
+        <div id="tab-posts" class="profile-tab-panel">
+          <div id="profile-posts" class="profile-posts-list"></div>
         </div>
-        <h2 class="timeline-title">Inlägg</h2>
-        <div id="profile-posts"></div>
+        <div id="tab-about" class="profile-tab-panel" hidden>
+          <div class="about-card">
+            <h3>Presentation</h3>
+            <p id="profile-about-text"></p>
+          </div>
+        </div>
+        <div id="tab-settings" class="profile-tab-panel" hidden>
+          <section class="settings-section">
+            <h3>Redigera profil</h3>
+            <div id="edit-avatars" class="avatar-options"></div>
+            <label class="upload-label btn btn-secondary btn-sm">Ladda upp profilbild<input type="file" id="edit-upload" accept="image/jpeg,image/png,image/webp" hidden /></label>
+            <div class="settings-fields">
+              <label>Om mig<textarea id="edit-bio" rows="3" maxlength="280"></textarea></label>
+              <div class="field-grid">
+                <label>Förnamn<input id="edit-name" /></label>
+                <label>Efternamn<input id="edit-surname" /></label>
+              </div>
+              <label>Omslagsfärg<input type="color" id="edit-cover" value="#1877f2" /></label>
+            </div>
+            <button type="button" id="btn-save-profile" class="btn btn-fb">Spara ändringar</button>
+          </section>
+          <section class="settings-section danger-zone">
+            <h3>Radera konto</h3>
+            <p class="muted">Detta går inte att ångra. Alla inlägg och vänner tas bort.</p>
+            <label>Lösenord<input id="delete-password" type="password" autocomplete="current-password" /></label>
+            <button type="button" id="btn-delete-profile" class="btn btn-danger">Radera mitt konto permanent</button>
+          </section>
+        </div>
       </div>
     </div>
 

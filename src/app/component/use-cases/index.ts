@@ -11,6 +11,8 @@ import createGet from "./get";
 import createPost from "./post";
 import { createWallGet, createWallPost, createSharePost } from "./wall";
 import { createAuthLogin } from "./auth";
+import { createAuthRecovery } from "./auth-recovery";
+import { recoveryRepository } from "../data-access/recovery";
 import {
   createProfileGet,
   createProfileUpdate,
@@ -22,6 +24,8 @@ import { createNotificationsUseCase } from "./notifications";
 import { createMessagesUseCase } from "./messages";
 
 const errorMsgs = config.ERROR_MSG;
+
+const authRecovery = createAuthRecovery({ usersRepository, recoveryRepository });
 
 const social = createSocialActions({
   socialRepository,
@@ -147,6 +151,7 @@ export {
   postWall,
   sharePost,
   login,
+  authRecovery,
   getProfile,
   updateProfile,
   deleteProfile,
