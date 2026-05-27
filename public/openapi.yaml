@@ -363,3 +363,11 @@ paths:
               required: [body]
               properties:
                 body: { type: string, maxLength: 1000 }
+
+  /api/v1/stream:
+    get:
+      summary: Realtime badge-stream (SSE)
+      tags: [Realtime]
+      description: |
+        Server-Sent Events för olästa notiser/meddelanden.
+        Skicka JWT i `Authorization: Bearer ...` eller query `token`.

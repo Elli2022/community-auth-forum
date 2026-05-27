@@ -1,5 +1,6 @@
 import type { Response } from "express";
 import { mimeFromDataUrl } from "../../libs/image";
+import { verifyAuthToken } from "../../libs/auth";
 import { logger } from "../../libs/logger";
 import { usersRepository } from "../data-access";
 import { wallRepository } from "../data-access/wall";
@@ -66,6 +67,19 @@ function routeCommentId(req: AuthedRequest): number {
   const id = Number(Array.isArray(raw) ? raw[0] : raw);
   if (!Number.isInteger(id) || id < 1) throw new Error("Ogiltigt kommentar-id");
   return id;
+}
+
+function authFromHeaderOrQuery(req: AuthedRequest): string {
+  const header = req.headers.authorization;
+  if (header?.startsWith("Bearer ")) {
+    return verifyAuthToken(header.slice(7)).sub;
+  }
+  const tokenRaw = req.query.token;
+  const token = Array.isArray(tokenRaw) ? tokenRaw[0] : tokenRaw;
+  if (typeof token === "string" && token.trim()) {
+    return verifyAuthToken(token.trim()).sub;
+  }
+  throw new Error("Inloggning krävs");
 }
 
 function sendImageFromDataUrl(res: Response, dataUrl: string) {
@@ -331,6 +345,52 @@ const deleteCommentEP = async (req: AuthedRequest, res: Response) => {
   }
 };
 
+const streamEP = async (req: AuthedRequest, res: Response) => {
+  let username: string;
+  try {
+    username = authFromHeaderOrQuery(req);
+  } catch {
+    res.status(401).json({ err: 1, message: "Ogiltig eller utgången session" });
+    return;
+  }
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders?.();
+
+  const writeSnapshot = async () => {
+    try {
+      const [notif, conv] = await Promise.all([
+        notifications.list(username),
+        messages.listConversations(username),
+      ]);
+      res.write(
+        `event: badges\ndata: ${JSON.stringify({
+          notifications_unread: notif.unread_count,
+          messages_unread: conv.unread_count,
+          ts: Date.now(),
+        })}\n\n`
+      );
+    } catch {
+      res.write("event: error\ndata: {}\n\n");
+    }
+  };
+
+  await writeSnapshot();
+  const heartbeat = setInterval(() => {
+    res.write("event: ping\ndata: {}\n\n");
+  }, 15000);
+  const updates = setInterval(() => {
+    void writeSnapshot();
+  }, 8000);
+
+  req.on("close", () => {
+    clearInterval(heartbeat);
+    clearInterval(updates);
+  });
+};
+
 const getNotificationsEP = async (req: AuthedRequest, res: Response) => {
   try {
     const results = await notifications.list(req.authUsername!);
@@ -464,6 +524,11 @@ const routes = [
     path: `${baseUrl}/comments/:id`,
     method: "delete" as const,
     component: [requireAuth, deleteCommentEP],
+  },
+  {
+    path: `${baseUrl}/stream`,
+    method: "get" as const,
+    component: streamEP,
   },
   {
     path: `${baseUrl}/notifications`,

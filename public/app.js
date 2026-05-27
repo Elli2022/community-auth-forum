@@ -9,6 +9,8 @@ let registerAvatarData = null;
 let registerAvatarId = 1;
 let composerImageData = null;
 let activeChatUser = null;
+let realtimeSource = null;
+let realtimeFallbackTimer = null;
 
 function getSession() {
   try {
@@ -162,6 +164,7 @@ function syncNav() {
   $("#nav-messages").hidden = !logged;
   $("#sidebar-messages").hidden = !logged;
   $("#nav-login-link").hidden = logged;
+  if (!logged) stopRealtime();
 
   if (logged) {
     const u = s.user;
@@ -173,6 +176,7 @@ function syncNav() {
     $("#nav-avatar").src = avatarSrc(u);
     $("#composer-avatar").src = avatarSrc(u);
     refreshBadges();
+    startRealtime();
   }
 }
 
@@ -180,20 +184,84 @@ async function refreshBadges() {
   if (!getSession()?.token) return;
   try {
     const { data } = await api("/api/v1/notifications");
-    const nb = $("#notif-badge");
-    if (data.unread_count > 0) {
-      nb.textContent = String(data.unread_count);
-      nb.hidden = false;
-    } else nb.hidden = true;
+    applyBadgeCounts({
+      notifications_unread: data.unread_count,
+      messages_unread: Number($("#msg-badge").textContent || 0),
+    });
   } catch { /* ignore */ }
   try {
     const { data } = await api("/api/v1/messages");
-    const mb = $("#msg-badge");
-    if (data.unread_count > 0) {
-      mb.textContent = String(data.unread_count);
-      mb.hidden = false;
-    } else mb.hidden = true;
+    applyBadgeCounts({
+      notifications_unread: Number($("#notif-badge").textContent || 0),
+      messages_unread: data.unread_count,
+    });
   } catch { /* ignore */ }
+}
+
+function applyBadgeCounts({ notifications_unread, messages_unread }) {
+  const nb = $("#notif-badge");
+  if (Number(notifications_unread) > 0) {
+    nb.textContent = String(notifications_unread);
+    nb.hidden = false;
+  } else {
+    nb.textContent = "";
+    nb.hidden = true;
+  }
+
+  const mb = $("#msg-badge");
+  if (Number(messages_unread) > 0) {
+    mb.textContent = String(messages_unread);
+    mb.hidden = false;
+  } else {
+    mb.textContent = "";
+    mb.hidden = true;
+  }
+}
+
+function stopRealtime() {
+  if (realtimeSource) {
+    realtimeSource.close();
+    realtimeSource = null;
+  }
+  if (realtimeFallbackTimer) {
+    clearInterval(realtimeFallbackTimer);
+    realtimeFallbackTimer = null;
+  }
+}
+
+function startRealtime() {
+  stopRealtime();
+  const session = getSession();
+  if (!session?.token) return;
+
+  if (typeof EventSource === "function") {
+    const source = new EventSource(
+      `/api/v1/stream?token=${encodeURIComponent(session.token)}`
+    );
+    source.addEventListener("badges", (event) => {
+      try {
+        applyBadgeCounts(JSON.parse(event.data || "{}"));
+      } catch {
+        /* ignore malformed event */
+      }
+    });
+    source.addEventListener("error", () => {
+      source.close();
+      realtimeSource = null;
+      if (!realtimeFallbackTimer) {
+        void refreshBadges();
+        realtimeFallbackTimer = setInterval(() => {
+          void refreshBadges();
+        }, 15000);
+      }
+    });
+    realtimeSource = source;
+    return;
+  }
+
+  realtimeFallbackTimer = setInterval(() => {
+    void refreshBadges();
+  }, 15000);
 }
 
 async function checkHealth() {

@@ -81,6 +81,7 @@ flowchart TB
 - **Socialt** — gilla, kommentera, dela inlägg; vänförfrågningar
 - **DM** — direktmeddelanden mellan accepterade vänner (konversationer + olästa)
 - **Notiser** — likes, kommentarer, delningar, vänner, nya meddelanden
+- **Realtime** — SSE-stream för olästa badges (med polling fallback)
 - **Säkerhet** — endast ägare kan PATCH/DELETE egen profil
 
 ---
@@ -150,6 +151,7 @@ Auth: `Authorization: Bearer <token>` där det krävs.
 | GET | `/api/v1/messages` | JWT | **DM:** konversationer |
 | GET | `/api/v1/messages/:username` | JWT | **DM:** tråd |
 | POST | `/api/v1/messages/:username` | JWT | **DM:** skicka |
+| GET | `/api/v1/stream` | JWT eller `?token=` | **Realtime:** SSE för unread-badges |
 
 Full spec: **[docs/openapi.yaml](docs/openapi.yaml)** (OpenAPI 3.1).
 
