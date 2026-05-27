@@ -643,12 +643,25 @@ async function deletePost(postId) {
   }
 }
 
-async function deleteComment(commentId) {
+async function deleteComment(commentId, triggerBtn) {
   if (!getSession()) return toast("Logga in.", "error");
+  const commentEl = triggerBtn?.closest(".comment");
+  const postCard = triggerBtn?.closest(".post-card");
+  const countEl = postCard?.querySelector(".comments-count");
+  const beforeCount = postCard ? postCard.querySelectorAll(".comment").length : 0;
+
+  if (triggerBtn) triggerBtn.disabled = true;
+  if (commentEl) commentEl.style.opacity = "0.6";
   try {
     await api(`/api/v1/comments/${commentId}`, { method: "DELETE" });
-    await loadFeed();
+    if (commentEl) commentEl.remove();
+    if (countEl && beforeCount > 0) {
+      countEl.textContent = `${beforeCount - 1} kommentarer`;
+    }
+    toast("Kommentar raderad.");
   } catch (e) {
+    if (commentEl) commentEl.style.opacity = "";
+    if (triggerBtn) triggerBtn.disabled = false;
     toast(e.message, "error");
   }
 }
@@ -1274,7 +1287,7 @@ document.addEventListener("click", (e) => {
   const btn = e.target.closest(".comment-delete");
   if (btn) {
     const id = Number(btn.dataset.commentId);
-    if (Number.isInteger(id) && id > 0) deleteComment(id);
+    if (Number.isInteger(id) && id > 0) deleteComment(id, btn);
   }
 });
 
