@@ -12,6 +12,48 @@ let activeChatUser = null;
 let realtimeSource = null;
 let realtimeFallbackTimer = null;
 let threadRealtimeSource = null;
+const EMOJIS = [
+  { char: "😀", name: "grin smile happy" },
+  { char: "😄", name: "smile happy eyes" },
+  { char: "😂", name: "laugh tears funny" },
+  { char: "🙂", name: "slight smile" },
+  { char: "😉", name: "wink" },
+  { char: "😍", name: "love eyes heart" },
+  { char: "😘", name: "kiss heart" },
+  { char: "😎", name: "cool sunglasses" },
+  { char: "🤔", name: "thinking hmm" },
+  { char: "😭", name: "cry sad tears" },
+  { char: "😡", name: "angry mad" },
+  { char: "🔥", name: "fire lit hot" },
+  { char: "🎉", name: "party celebration" },
+  { char: "✨", name: "sparkles magic" },
+  { char: "💯", name: "hundred perfect" },
+  { char: "❤️", name: "heart love" },
+  { char: "💙", name: "blue heart" },
+  { char: "👍", name: "thumbs up like" },
+  { char: "👎", name: "thumbs down" },
+  { char: "👏", name: "clap applause" },
+  { char: "🙌", name: "raised hands" },
+  { char: "🙏", name: "thanks pray" },
+  { char: "🤝", name: "handshake" },
+  { char: "💪", name: "strong muscle" },
+  { char: "🧠", name: "brain smart" },
+  { char: "🚀", name: "rocket launch" },
+  { char: "🌟", name: "star" },
+  { char: "🌈", name: "rainbow" },
+  { char: "☀️", name: "sun" },
+  { char: "🌧️", name: "rain" },
+  { char: "🍕", name: "pizza food" },
+  { char: "☕", name: "coffee" },
+  { char: "🏆", name: "trophy win" },
+  { char: "⚽", name: "football soccer" },
+  { char: "🎵", name: "music note" },
+  { char: "📚", name: "books study" },
+  { char: "💡", name: "idea bulb" },
+  { char: "✅", name: "check done" },
+  { char: "❌", name: "cross no" },
+  { char: "🤍", name: "white heart" },
+];
 
 function getSession() {
   try {
@@ -311,6 +353,64 @@ function insertEmojiAtCursor(input, emoji) {
   input.selectionStart = nextPos;
   input.selectionEnd = nextPos;
   input.focus();
+}
+
+function closeEmojiPicker() {
+  const picker = $("#composer-emoji-picker");
+  const toggle = $("#composer-emoji-toggle");
+  if (!picker || !toggle) return;
+  picker.hidden = true;
+  toggle.setAttribute("aria-expanded", "false");
+}
+
+function renderEmojiGrid(query = "") {
+  const grid = $("#emoji-grid");
+  if (!grid) return;
+  const q = query.trim().toLowerCase();
+  const list = q
+    ? EMOJIS.filter((e) => e.name.includes(q))
+    : EMOJIS;
+  if (!list.length) {
+    grid.innerHTML = '<p class="emoji-empty">Inga emojis hittades.</p>';
+    return;
+  }
+  grid.innerHTML = list
+    .map(
+      (e) =>
+        `<button type="button" class="emoji-btn" data-emoji="${e.char}" title="${escapeHtml(e.name)}">${e.char}</button>`
+    )
+    .join("");
+}
+
+function initEmojiPicker() {
+  const toggle = $("#composer-emoji-toggle");
+  const picker = $("#composer-emoji-picker");
+  const search = $("#emoji-search");
+  const composer = $("#composer-emojis");
+  if (!toggle || !picker || !search || !composer) return;
+
+  renderEmojiGrid("");
+
+  toggle.addEventListener("click", () => {
+    const open = picker.hidden;
+    picker.hidden = !open;
+    toggle.setAttribute("aria-expanded", open ? "true" : "false");
+    if (open) {
+      search.value = "";
+      renderEmojiGrid("");
+      search.focus();
+    }
+  });
+
+  search.addEventListener("input", () => {
+    renderEmojiGrid(search.value);
+  });
+
+  composer.addEventListener("click", (e) => {
+    const btn = e.target.closest(".emoji-btn");
+    if (!btn) return;
+    insertEmojiAtCursor($("#composer-text"), btn.dataset.emoji || "");
+  });
 }
 
 function startThreadRealtime(username) {
@@ -859,12 +959,6 @@ $("#composer-clear-img")?.addEventListener("click", () => {
   $("#composer-image").value = "";
 });
 
-$("#composer-emojis")?.addEventListener("click", (e) => {
-  const btn = e.target.closest(".emoji-btn");
-  if (!btn) return;
-  insertEmojiAtCursor($("#composer-text"), btn.dataset.emoji || "");
-});
-
 function validateUsername(value) {
   const v = (value || "").trim();
   if (!v) return "Användarnamn krävs.";
@@ -1069,6 +1163,7 @@ $("#btn-notifications")?.addEventListener("click", async (e) => {
 
 document.addEventListener("click", (e) => {
   if (!e.target.closest(".notif-wrap")) $("#notif-panel").hidden = true;
+  if (!e.target.closest("#composer-emojis")) closeEmojiPicker();
   const btn = e.target.closest(".comment-delete");
   if (btn) {
     const id = Number(btn.dataset.commentId);
@@ -1174,6 +1269,7 @@ function contactRow(u, showAdd) {
 window.addEventListener("hashchange", () => showView(parseRoute()));
 
 syncNav();
+initEmojiPicker();
 checkHealth();
 showView(parseRoute());
 setInterval(() => { if (getSession()) refreshBadges(); }, 60000);
