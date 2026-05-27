@@ -241,6 +241,7 @@ a:hover { text-decoration: underline; }
 }
 .post-actions button:hover { background: var(--hover); }
 .post-actions button.liked { color: var(--fb-blue); }
+.post-actions .btn-delete-post { color: var(--danger); }
 
 .post-comments { padding: 0 1rem 0.75rem; background: var(--bg); }
 .comment {
@@ -255,6 +256,20 @@ a:hover { text-decoration: underline; }
   padding: 0.4rem 0.65rem;
   border-radius: 12px;
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.comment-delete {
+  align-self: flex-start;
+  border: none;
+  background: transparent;
+  color: var(--danger);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0;
+  cursor: pointer;
 }
 .comment-form {
   display: flex;

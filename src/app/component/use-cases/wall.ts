@@ -182,3 +182,28 @@ export function createSharePost({
     },
   });
 }
+
+export function createWallDelete({
+  wallRepository,
+}: {
+  wallRepository: WallRepository;
+}) {
+  return Object.freeze({
+    remove: async ({
+      postId,
+      authUsername,
+    }: {
+      postId: number;
+      authUsername: string;
+    }) => {
+      const deleted = await wallRepository.deleteByIdForUser(
+        postId,
+        authUsername
+      );
+      if (!deleted) {
+        throw new Error("Inlägget finns inte eller tillhör inte dig");
+      }
+      return { ok: true, post_id: postId };
+    },
+  });
+}

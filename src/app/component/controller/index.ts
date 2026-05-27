@@ -9,6 +9,7 @@ import {
   getFeed,
   getWall,
   postWall,
+  deleteWallPost,
   login,
   authRecovery,
   getProfile,
@@ -57,6 +58,13 @@ function routePostId(req: AuthedRequest): number {
   const raw = req.params.id;
   const id = Number(Array.isArray(raw) ? raw[0] : raw);
   if (!Number.isInteger(id) || id < 1) throw new Error("Ogiltigt inläggs-id");
+  return id;
+}
+
+function routeCommentId(req: AuthedRequest): number {
+  const raw = req.params.id;
+  const id = Number(Array.isArray(raw) ? raw[0] : raw);
+  if (!Number.isInteger(id) || id < 1) throw new Error("Ogiltigt kommentar-id");
   return id;
 }
 
@@ -299,6 +307,30 @@ const sharePostEP = async (req: AuthedRequest, res: Response) => {
   }
 };
 
+const deletePostEP = async (req: AuthedRequest, res: Response) => {
+  try {
+    const results = await deleteWallPost({
+      postId: routePostId(req),
+      authUsername: req.authUsername!,
+    });
+    res.json({ err: 0, data: results });
+  } catch (err) {
+    res.status(400).json({ err: 1, message: errorMessage(err) });
+  }
+};
+
+const deleteCommentEP = async (req: AuthedRequest, res: Response) => {
+  try {
+    const results = await social.deleteComment(
+      routeCommentId(req),
+      req.authUsername!
+    );
+    res.json({ err: 0, data: results });
+  } catch (err) {
+    res.status(400).json({ err: 1, message: errorMessage(err) });
+  }
+};
+
 const getNotificationsEP = async (req: AuthedRequest, res: Response) => {
   try {
     const results = await notifications.list(req.authUsername!);
@@ -422,6 +454,16 @@ const routes = [
     path: `${baseUrl}/posts/:id/share`,
     method: "post" as const,
     component: [requireAuth, sharePostEP],
+  },
+  {
+    path: `${baseUrl}/posts/:id`,
+    method: "delete" as const,
+    component: [requireAuth, deletePostEP],
+  },
+  {
+    path: `${baseUrl}/comments/:id`,
+    method: "delete" as const,
+    component: [requireAuth, deleteCommentEP],
   },
   {
     path: `${baseUrl}/notifications`,

@@ -11,6 +11,10 @@ export interface WallPostRecord {
 
 type Logger = { info: (message: string) => void };
 
+function asRows<T>(result: unknown): T[] {
+  return Array.isArray(result) ? (result as T[]) : [];
+}
+
 export default function makeWallRepository({
   sql,
   logger,
@@ -26,6 +30,7 @@ export default function makeWallRepository({
     findByIds,
     getPostImage,
     create,
+    deleteByIdForUser,
   });
 
   async function findAll(): Promise<WallPostRecord[]> {
@@ -108,5 +113,17 @@ export default function makeWallRepository({
     `;
     logger.info(`[DB][WALL] create @${username} - DONE`);
     return rows[0] as WallPostRecord;
+  }
+
+  async function deleteByIdForUser(
+    id: number,
+    username: string
+  ): Promise<boolean> {
+    const rows = asRows<{ id: number }>(await sql`
+      DELETE FROM wall_posts
+      WHERE id = ${id} AND username = ${username}
+      RETURNING id
+    `);
+    return rows.length > 0;
   }
 }

@@ -134,6 +134,8 @@ Auth: `Authorization: Bearer <token>` där det krävs.
 | POST | `/api/v1/posts/:id/like` | JWT | Toggle gilla |
 | POST | `/api/v1/posts/:id/comments` | JWT | Kommentar |
 | POST | `/api/v1/posts/:id/share` | JWT | Dela inlägg |
+| DELETE | `/api/v1/posts/:id` | JWT + ägare | Radera eget inlägg |
+| DELETE | `/api/v1/comments/:id` | JWT + ägare | Radera egen kommentar |
 | GET | `/api/v1/posts/:id/image` | — | Inläggsbild |
 
 ### Vänner, notiser, DM

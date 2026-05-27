@@ -88,6 +88,17 @@ export function createSocialActions({
       };
     },
 
+    deleteComment: async (commentId: number, username: string) => {
+      const removed = await socialRepository.deleteCommentByIdForUser(
+        commentId,
+        username
+      );
+      if (!removed) {
+        throw new Error("Kommentaren finns inte eller tillhör inte dig");
+      }
+      return { ok: true, comment_id: removed.id, post_id: removed.post_id };
+    },
+
     listFriends: async (username: string) => {
       const friends = await socialRepository.listFriends(username);
       const incoming = await socialRepository.listPendingIncoming(username);

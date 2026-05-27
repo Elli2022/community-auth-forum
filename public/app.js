@@ -263,6 +263,9 @@ function renderPostCard(post) {
   const img = post.has_image ? `${API}${post.image_url}` : "";
   const shared = post.shared_post ? `<p class="shared-label">↪ Delade ett inlägg</p>${renderSharedEmbed(post.shared_post)}` : "";
 
+  const me = getSession()?.user?.username;
+  const canDeletePost = Boolean(me && post.username === me);
+
   card.innerHTML = `
     <header class="post-header">
       <a href="#/profile/${encodeURIComponent(post.username)}">
@@ -284,8 +287,9 @@ function renderPostCard(post) {
       <button type="button" class="btn-like ${post.liked_by_me ? "liked" : ""}">👍 Gilla</button>
       <button type="button" class="btn-comment-toggle">💬 Kommentera</button>
       <button type="button" class="btn-share">↗ Dela</button>
+      ${canDeletePost ? '<button type="button" class="btn-delete-post">🗑 Radera</button>' : ""}
     </div>
-    <div class="post-comments">${(post.comments || []).map(renderComment).join("")}</div>
+    <div class="post-comments">${(post.comments || []).map((c) => renderComment(c, me)).join("")}</div>
     <form class="comment-form" hidden>
       <img src="${getSession() ? avatarSrc(getSession().user) : presetAvatar(1)}" alt="" width="32" height="32" />
       <input type="text" placeholder="Skriv en kommentar…" maxlength="300" />
@@ -304,6 +308,7 @@ function renderPostCard(post) {
     input.value = "";
   });
   card.querySelector(".btn-share")?.addEventListener("click", () => sharePost(post.id));
+  card.querySelector(".btn-delete-post")?.addEventListener("click", () => deletePost(post.id));
 
   return card;
 }
@@ -325,17 +330,41 @@ async function sharePost(postId) {
   }
 }
 
-function renderComment(c) {
+function renderComment(c, me) {
+  const canDelete = Boolean(me && c.username === me);
   const a = c.author || {};
   return `
     <div class="comment">
       <img src="${avatarSrc(a)}" alt="" />
       <div class="comment-bubble">
         <strong>${escapeHtml(a.display_name || c.username)}</strong>
-        ${escapeHtml(c.message)}
+        <span>${escapeHtml(c.message)}</span>
+        ${canDelete ? `<button type="button" class="comment-delete" data-comment-id="${c.id}" title="Radera kommentar">Ta bort</button>` : ""}
       </div>
     </div>
   `;
+}
+
+async function deletePost(postId) {
+  if (!getSession()) return toast("Logga in.", "error");
+  if (!confirm("Radera detta inlägg permanent?")) return;
+  try {
+    await api(`/api/v1/posts/${postId}`, { method: "DELETE" });
+    toast("Inlägg raderat.");
+    await loadFeed();
+  } catch (e) {
+    toast(e.message, "error");
+  }
+}
+
+async function deleteComment(commentId) {
+  if (!getSession()) return toast("Logga in.", "error");
+  try {
+    await api(`/api/v1/comments/${commentId}`, { method: "DELETE" });
+    await loadFeed();
+  } catch (e) {
+    toast(e.message, "error");
+  }
 }
 
 async function loadFeed() {
@@ -893,6 +922,11 @@ $("#btn-notifications")?.addEventListener("click", async (e) => {
 
 document.addEventListener("click", (e) => {
   if (!e.target.closest(".notif-wrap")) $("#notif-panel").hidden = true;
+  const btn = e.target.closest(".comment-delete");
+  if (btn) {
+    const id = Number(btn.dataset.commentId);
+    if (Number.isInteger(id) && id > 0) deleteComment(id);
+  }
 });
 
 async function loadMessagesView(openUser) {

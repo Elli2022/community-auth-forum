@@ -8,6 +8,11 @@ export interface CommentRecord {
   created_at: Date | string;
 }
 
+export interface DeletedCommentRecord {
+  id: number;
+  post_id: number;
+}
+
 export interface FriendshipRecord {
   id: number;
   user_a: string;
@@ -31,6 +36,7 @@ export default function makeSocialRepository({ sql }: { sql: SqlClient }) {
     getLikeCounts,
     getLikedByViewer,
     addComment,
+    deleteCommentByIdForUser,
     getCommentsForPosts,
     sendFriendRequest,
     acceptFriendRequest,
@@ -127,6 +133,18 @@ export default function makeSocialRepository({ sql }: { sql: SqlClient }) {
       map.set(r.post_id, list);
     }
     return map;
+  }
+
+  async function deleteCommentByIdForUser(
+    commentId: number,
+    username: string
+  ): Promise<DeletedCommentRecord | null> {
+    const rows = asRows<DeletedCommentRecord>(await sql`
+      DELETE FROM post_comments
+      WHERE id = ${commentId} AND username = ${username}
+      RETURNING id, post_id
+    `);
+    return rows[0] ?? null;
   }
 
   async function sendFriendRequest(

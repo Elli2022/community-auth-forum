@@ -249,6 +249,28 @@ paths:
               properties:
                 message: { type: string, maxLength: 300 }
 
+  /api/v1/posts/{id}:
+    delete:
+      summary: Radera eget inlägg
+      tags: [Posts]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+
+  /api/v1/comments/{id}:
+    delete:
+      summary: Radera egen kommentar
+      tags: [Posts]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+
   /api/v1/posts/{id}/image:
     get:
       summary: Bild tillhörande inlägg

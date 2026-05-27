@@ -9,7 +9,12 @@ import makeDataManipulation from "../entities/data-manipulation";
 import { logger } from "../../libs/logger";
 import createGet from "./get";
 import createPost from "./post";
-import { createWallGet, createWallPost, createSharePost } from "./wall";
+import {
+  createWallGet,
+  createWallPost,
+  createSharePost,
+  createWallDelete,
+} from "./wall";
 import { createAuthLogin } from "./auth";
 import { createAuthRecovery } from "./auth-recovery";
 import { recoveryRepository } from "../data-access/recovery";
@@ -110,6 +115,17 @@ const postWall = ({
     logger,
   }).post({ authUsername, params, errorMsgs: errorMsgs.post });
 
+const deleteWallPost = ({
+  postId,
+  authUsername,
+}: {
+  postId: number;
+  authUsername: string;
+}) =>
+  createWallDelete({
+    wallRepository,
+  }).remove({ postId, authUsername });
+
 const login = ({ params }: { params: Record<string, unknown> }) =>
   createAuthLogin({ usersRepository, makeDataManipulation, logger }).login({
     params,
@@ -149,6 +165,7 @@ export {
   getFeed,
   getWall,
   postWall,
+  deleteWallPost,
   sharePost,
   login,
   authRecovery,
