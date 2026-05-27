@@ -661,6 +661,12 @@ body.auth-page .fb-layout { display: none; }
   max-height: 420px;
   padding: 0.5rem 0;
 }
+.thread-status {
+  min-height: 1rem;
+  font-size: 0.8rem;
+  text-align: right;
+  padding: 0 0.25rem;
+}
 .bubble {
   max-width: 75%;
   padding: 0.55rem 0.85rem;

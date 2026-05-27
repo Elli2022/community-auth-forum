@@ -275,6 +275,7 @@ function startRealtime() {
 
 function renderThreadMessages(messages) {
   const box = $("#thread-messages");
+  const status = $("#thread-status");
   box.innerHTML = "";
   messages.forEach((m) => {
     const el = document.createElement("div");
@@ -283,6 +284,16 @@ function renderThreadMessages(messages) {
     box.appendChild(el);
   });
   box.scrollTop = box.scrollHeight;
+
+  const mine = messages.filter((m) => m.mine);
+  const lastMine = mine[mine.length - 1];
+  if (lastMine) {
+    status.hidden = false;
+    status.textContent = lastMine.read ? "Sett" : "Skickat";
+  } else {
+    status.hidden = true;
+    status.textContent = "";
+  }
 }
 
 function startThreadRealtime(username) {
@@ -1077,6 +1088,8 @@ async function loadMessagesView(openUser) {
       stopThreadRealtime();
       $("#thread-header").textContent = "Välj en konversation";
       $("#thread-messages").innerHTML = "";
+      $("#thread-status").hidden = true;
+      $("#thread-status").textContent = "";
       $("#thread-form").hidden = true;
     }
   } catch (e) {
