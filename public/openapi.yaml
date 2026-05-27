@@ -371,3 +371,4 @@ paths:
       description: |
         Server-Sent Events för olästa notiser/meddelanden.
         Skicka JWT i `Authorization: Bearer ...` eller query `token`.
+        Lägg till `thread_with=<username>` för live-events för en specifik DM-tråd.

@@ -11,6 +11,7 @@ let composerImageData = null;
 let activeChatUser = null;
 let realtimeSource = null;
 let realtimeFallbackTimer = null;
+let threadRealtimeSource = null;
 
 function getSession() {
   try {
@@ -124,6 +125,7 @@ function showView(route) {
   $("#view-auth").hidden = !isAuth;
   $("#notif-panel").hidden = true;
   document.body.classList.toggle("auth-page", isAuth || route.view === "register");
+  if (route.view !== "messages") stopThreadRealtime();
 
   if (route.view === "home") {
     loadFeed();
@@ -229,6 +231,13 @@ function stopRealtime() {
   }
 }
 
+function stopThreadRealtime() {
+  if (threadRealtimeSource) {
+    threadRealtimeSource.close();
+    threadRealtimeSource = null;
+  }
+}
+
 function startRealtime() {
   stopRealtime();
   const session = getSession();
@@ -262,6 +271,42 @@ function startRealtime() {
   realtimeFallbackTimer = setInterval(() => {
     void refreshBadges();
   }, 15000);
+}
+
+function renderThreadMessages(messages) {
+  const box = $("#thread-messages");
+  box.innerHTML = "";
+  messages.forEach((m) => {
+    const el = document.createElement("div");
+    el.className = `bubble ${m.mine ? "mine" : "theirs"}`;
+    el.textContent = m.body;
+    box.appendChild(el);
+  });
+  box.scrollTop = box.scrollHeight;
+}
+
+function startThreadRealtime(username) {
+  stopThreadRealtime();
+  const session = getSession();
+  if (!session?.token || typeof EventSource !== "function") return;
+  const source = new EventSource(
+    `/api/v1/stream?token=${encodeURIComponent(session.token)}&thread_with=${encodeURIComponent(username)}`
+  );
+  source.addEventListener("thread", (event) => {
+    try {
+      const payload = JSON.parse(event.data || "{}");
+      if (payload.username === activeChatUser && Array.isArray(payload.messages)) {
+        renderThreadMessages(payload.messages);
+      }
+    } catch {
+      /* ignore malformed event */
+    }
+  });
+  source.addEventListener("error", () => {
+    source.close();
+    threadRealtimeSource = null;
+  });
+  threadRealtimeSource = source;
 }
 
 async function checkHealth() {
@@ -1028,6 +1073,8 @@ async function loadMessagesView(openUser) {
     refreshBadges();
     if (openUser) await openChat(openUser);
     else {
+      activeChatUser = null;
+      stopThreadRealtime();
       $("#thread-header").textContent = "Välj en konversation";
       $("#thread-messages").innerHTML = "";
       $("#thread-form").hidden = true;
@@ -1045,14 +1092,8 @@ async function openChat(username) {
   box.innerHTML = "<p class='muted'>Laddar…</p>";
   try {
     const { data } = await api(`/api/v1/messages/${encodeURIComponent(username)}`);
-    box.innerHTML = "";
-    data.forEach((m) => {
-      const el = document.createElement("div");
-      el.className = `bubble ${m.mine ? "mine" : "theirs"}`;
-      el.textContent = m.body;
-      box.appendChild(el);
-    });
-    box.scrollTop = box.scrollHeight;
+    renderThreadMessages(data);
+    startThreadRealtime(username);
     refreshBadges();
   } catch (e) {
     box.innerHTML = `<p class="muted">${escapeHtml(e.message)}</p>`;

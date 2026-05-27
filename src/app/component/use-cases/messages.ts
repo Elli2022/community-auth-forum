@@ -29,6 +29,18 @@ export function createMessagesUseCase({
   socialRepository: SocialRepository;
   usersRepository: UsersRepository;
 }) {
+  function mapThreadRows(rows: Awaited<ReturnType<MessagesRepository["getThread"]>>, viewer: string) {
+    return rows.map((m) => ({
+      id: m.id,
+      sender: m.sender,
+      recipient: m.recipient,
+      body: m.body,
+      mine: m.sender === viewer,
+      read: Boolean(m.read_at),
+      created: formatDate(m.created_at),
+    }));
+  }
+
   return Object.freeze({
     listConversations: async (username: string) => {
       const rows = await messagesRepository.listConversations(username);
@@ -59,15 +71,16 @@ export function createMessagesUseCase({
       }
       await messagesRepository.markThreadRead(viewer, other);
       const rows = await messagesRepository.getThread(viewer, other);
-      return rows.map((m) => ({
-        id: m.id,
-        sender: m.sender,
-        recipient: m.recipient,
-        body: m.body,
-        mine: m.sender === viewer,
-        read: Boolean(m.read_at),
-        created: formatDate(m.created_at),
-      }));
+      return mapThreadRows(rows, viewer);
+    },
+
+    peekThread: async (viewer: string, other: string) => {
+      const friends = await socialRepository.listFriends(viewer);
+      if (!friends.includes(other)) {
+        throw new Error("Du kan bara chatta med accepterade vänner");
+      }
+      const rows = await messagesRepository.getThread(viewer, other);
+      return mapThreadRows(rows, viewer);
     },
 
     send: async (sender: string, recipient: string, body: string) => {

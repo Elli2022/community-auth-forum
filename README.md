@@ -81,7 +81,7 @@ flowchart TB
 - **Socialt** — gilla, kommentera, dela inlägg; vänförfrågningar
 - **DM** — direktmeddelanden mellan accepterade vänner (konversationer + olästa)
 - **Notiser** — likes, kommentarer, delningar, vänner, nya meddelanden
-- **Realtime** — SSE-stream för olästa badges (med polling fallback)
+- **Realtime** — SSE för olästa badges + live DM-tråd (med polling fallback för badges)
 - **Säkerhet** — endast ägare kan PATCH/DELETE egen profil
 
 ---

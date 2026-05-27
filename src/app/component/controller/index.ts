@@ -359,6 +359,9 @@ const streamEP = async (req: AuthedRequest, res: Response) => {
   res.setHeader("Connection", "keep-alive");
   res.flushHeaders?.();
 
+  const threadRaw = req.query.thread_with;
+  const threadWith = Array.isArray(threadRaw) ? threadRaw[0] : threadRaw;
+
   const writeSnapshot = async () => {
     try {
       const [notif, conv] = await Promise.all([
@@ -372,6 +375,16 @@ const streamEP = async (req: AuthedRequest, res: Response) => {
           ts: Date.now(),
         })}\n\n`
       );
+      if (typeof threadWith === "string" && threadWith.trim()) {
+        const thread = await messages.peekThread(username, threadWith.trim());
+        res.write(
+          `event: thread\ndata: ${JSON.stringify({
+            username: threadWith.trim(),
+            messages: thread,
+            ts: Date.now(),
+          })}\n\n`
+        );
+      }
     } catch {
       res.write("event: error\ndata: {}\n\n");
     }
