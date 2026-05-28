@@ -6,8 +6,8 @@
 
 | | |
 |---|---|
-| **Live** | [community-auth-forum.netlify.app](https://community-auth-forum.netlify.app) |
-| **API-spec** | [docs/openapi.yaml](docs/openapi.yaml) · [YAML på prod](https://community-auth-forum.netlify.app/openapi.yaml) |
+| **Live** | [flodet.netlify.app](https://flodet.netlify.app) |
+| **API-spec** | [docs/openapi.yaml](docs/openapi.yaml) · [YAML på prod](https://flodet.netlify.app/openapi.yaml) |
 | **Stack** | Node.js 20+ · TypeScript · Express · PostgreSQL (Neon) · Netlify Functions |
 | **CI** | GitHub Actions: `npm ci` → audit → build → tests (Postgres service) |
 
