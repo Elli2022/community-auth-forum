@@ -15,11 +15,20 @@
 
 ## Screenshots
 
+![Flödet home](public/screenshots/home.png)
 ![Flödet feed](public/screenshots/feed.svg)
 ![Flödet profile](public/screenshots/profile.svg)
 ![Flödet messages](public/screenshots/messages.svg)
 
 > Tips: ersätt filerna i `public/screenshots/` med riktiga appbilder (samma filnamn) så uppdateras README automatiskt.
+
+---
+
+## Outcome
+
+- End-to-end fullstack social platform with production deployment, not just local demo.
+- Secure auth + profile/feed/DM workflow provides a realistic portfolio backend baseline.
+- API + CI + OpenAPI coverage makes onboarding, review, and future extension significantly easier.
 
 ---
 
