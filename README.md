@@ -15,7 +15,6 @@
 
 ## Screenshots
 
-![Flödet home](public/screenshots/home.png)
 ![Flödet feed](public/screenshots/feed.png)
 ![Flödet profile](public/screenshots/profile.png)
 ![Flödet messages](public/screenshots/messages.png)
